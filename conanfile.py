@@ -39,6 +39,7 @@ class easy_profiler_Conan(ConanFile):
         self.copy("*.h", dst="include", src="src/easy_profiler_core/include", keep_path=True)
         # Libraries
         self.copy("*easy_profiler.lib", dst="lib", keep_path=False)
+        self.copy("*easy_profiler.a", dst="lib", keep_path=False)
         # PDB
         self.copy("easy_profiler.pdb", dst="bin", src="lib", keep_path=False)
         # License
