@@ -45,37 +45,20 @@ The Apache License, Version 2.0 (the "License");
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include <easy/serialized_block.h>
+#include <easy/details/arbitrary_value_public_types.h>
+#include <easy/utility.h>
 #include <unordered_map>
 #include <vector>
 #include <string>
 #include <atomic>
 
-#include <easy/profiler.h>
-#include <easy/serialized_block.h>
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace profiler {
 
-    typedef uint32_t calls_number_t;
-    typedef uint32_t block_index_t;
-
-    template <class T, bool greater_than_size_t>
-    struct hash : public ::std::hash<T> {
-        using ::std::hash<T>::operator();
-    };
-
-    template <class T>
-    struct hash<T, false> {
-        inline size_t operator () (T _value) const {
-            return static_cast<size_t>(_value);
-        }
-    };
-
-    template <class T>
-    struct passthrough_hash : public hash<T, (sizeof(T) > sizeof(size_t))> {
-        using hash<T, (sizeof(T) > sizeof(size_t))>::operator();
-    };
+    using calls_number_t = uint32_t;
+    using block_index_t  = uint32_t;
 
 #pragma pack(push, 1)
     struct BlockStatistics EASY_FINAL
@@ -113,18 +96,19 @@ namespace profiler {
 
     class BlocksTree EASY_FINAL
     {
-        typedef BlocksTree This;
+        using This = BlocksTree;
 
     public:
 
-        typedef ::std::vector<This> blocks_t;
-        typedef ::std::vector<::profiler::block_index_t> children_t;
+        using blocks_t = ::std::vector<This>;
+        using children_t = ::std::vector<::profiler::block_index_t>;
 
-        children_t                           children; ///< List of children blocks. May be empty.
+        children_t children; ///< List of children blocks. May be empty.
 
         union {
-            ::profiler::SerializedBlock*   node; ///< Pointer to serilized data for regular block (id, name, begin, end etc.)
-            ::profiler::SerializedCSwitch*   cs; ///< Pointer to serilized data for context switch (thread_id, name, begin, end etc.)
+            ::profiler::SerializedBlock*   node; ///< Pointer to serialized data for regular block (id, name, begin, end etc.)
+            ::profiler::SerializedCSwitch*   cs; ///< Pointer to serialized data for context switch (thread_id, name, begin, end etc.)
+            ::profiler::ArbitraryValue*   value; ///< Pointer to serialized data for arbitrary value
         };
 
         ::profiler::BlockStatistics* per_parent_stats; ///< Pointer to statistics for this block within the parent (may be nullptr for top-level blocks)
@@ -132,7 +116,10 @@ namespace profiler {
         ::profiler::BlockStatistics* per_thread_stats; ///< Pointer to statistics for this block within the bounds of all frames per current thread
         uint8_t                                 depth; ///< Maximum number of sublevels (maximum children depth)
 
-        BlocksTree()
+        BlocksTree(const This&) = delete;
+        This& operator = (const This&) = delete;
+
+        BlocksTree() EASY_NOEXCEPT
             : node(nullptr)
             , per_parent_stats(nullptr)
             , per_frame_stats(nullptr)
@@ -142,32 +129,33 @@ namespace profiler {
 
         }
 
-        BlocksTree(This&& that) : BlocksTree()
+        BlocksTree(This&& that) EASY_NOEXCEPT
+            : BlocksTree()
         {
             make_move(::std::forward<This&&>(that));
         }
 
-        This& operator = (This&& that)
+        This& operator = (This&& that) EASY_NOEXCEPT
         {
             make_move(::std::forward<This&&>(that));
             return *this;
         }
 
-        ~BlocksTree()
+        ~BlocksTree() EASY_NOEXCEPT
         {
             release_stats(per_thread_stats);
             release_stats(per_parent_stats);
             release_stats(per_frame_stats);
         }
 
-        bool operator < (const This& other) const
+        bool operator < (const This& other) const EASY_NOEXCEPT
         {
-            if (!node || !other.node)
+            if (node == nullptr || other.node == nullptr)
                 return false;
             return node->begin() < other.node->begin();
         }
 
-        void shrink_to_fit()
+        void shrink_to_fit() EASY_NOEXCEPT
         {
             //for (auto& child : children)
             //    child.shrink_to_fit();
@@ -184,10 +172,7 @@ namespace profiler {
 
     private:
 
-        BlocksTree(const This&) = delete;
-        This& operator = (const This&) = delete;
-
-        void make_move(This&& that)
+        void make_move(This&& that) EASY_NOEXCEPT
         {
             if (per_thread_stats != that.per_thread_stats)
                 release_stats(per_thread_stats);
@@ -217,7 +202,7 @@ namespace profiler {
 
     class BlocksTreeRoot EASY_FINAL
     {
-        typedef BlocksTreeRoot This;
+        using This = BlocksTreeRoot;
 
     public:
 
@@ -232,11 +217,15 @@ namespace profiler {
         ::profiler::block_index_t blocks_number; ///< Total blocks number including their children
         uint8_t                           depth; ///< Maximum stack depth (number of levels)
 
-        BlocksTreeRoot() : profiled_time(0), wait_time(0), thread_id(0), frames_number(0), blocks_number(0), depth(0)
+        BlocksTreeRoot(const This&) = delete;
+        This& operator = (const This&) = delete;
+
+        BlocksTreeRoot() EASY_NOEXCEPT
+            : profiled_time(0), wait_time(0), thread_id(0), frames_number(0), blocks_number(0), depth(0)
         {
         }
 
-        BlocksTreeRoot(This&& that)
+        BlocksTreeRoot(This&& that) EASY_NOEXCEPT
             : children(::std::move(that.children))
             , sync(::std::move(that.sync))
             , events(::std::move(that.events))
@@ -250,7 +239,7 @@ namespace profiler {
         {
         }
 
-        This& operator = (This&& that)
+        This& operator = (This&& that) EASY_NOEXCEPT
         {
             children = ::std::move(that.children);
             sync = ::std::move(that.sync);
@@ -265,31 +254,25 @@ namespace profiler {
             return *this;
         }
 
-        inline bool got_name() const
+        inline bool got_name() const EASY_NOEXCEPT
         {
             return !thread_name.empty();
         }
 
-        inline const char* name() const
+        inline const char* name() const EASY_NOEXCEPT
         {
             return thread_name.c_str();
         }
 
-        bool operator < (const This& other) const
+        bool operator < (const This& other) const EASY_NOEXCEPT
         {
             return thread_id < other.thread_id;
         }
 
-    private:
-
-        BlocksTreeRoot(const This&) = delete;
-        This& operator = (const This&) = delete;
-
     }; // END of class BlocksTreeRoot.
 
-    typedef ::profiler::BlocksTree::blocks_t blocks_t;
-
-    typedef ::std::unordered_map<::profiler::thread_id_t, ::profiler::BlocksTreeRoot, ::profiler::passthrough_hash<::profiler::thread_id_t> > thread_blocks_tree_t;
+    using blocks_t = ::profiler::BlocksTree::blocks_t;
+    using thread_blocks_tree_t = ::std::unordered_map<::profiler::thread_id_t, ::profiler::BlocksTreeRoot, ::estd::hash<::profiler::thread_id_t> >;
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -299,6 +282,9 @@ namespace profiler {
         size_t m_size;
 
     public:
+
+        SerializedData(const SerializedData&) = delete;
+        SerializedData& operator = (const SerializedData&) = delete;
 
         SerializedData() : m_data(nullptr), m_size(0)
         {
@@ -377,14 +363,11 @@ namespace profiler {
 
         void set(char* _data, uint64_t _size);
 
-        SerializedData(const SerializedData&) = delete;
-        SerializedData& operator = (const SerializedData&) = delete;
-
     }; // END of class SerializedData.
 
     //////////////////////////////////////////////////////////////////////////
 
-    typedef ::std::vector<SerializedBlockDescriptor*> descriptors_list_t;
+    using descriptors_list_t = ::std::vector<SerializedBlockDescriptor*>;
 
 } // END of namespace profiler.
 

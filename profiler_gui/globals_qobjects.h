@@ -56,7 +56,7 @@
 #define EASY_GLOBALS_QOBJECTS_H
 
 #include <QObject>
-#include <easy/profiler.h>
+#include <easy/details/profiler_public_types.h>
 
 namespace profiler_gui {
 
@@ -86,6 +86,7 @@ namespace profiler_gui {
         void hexThreadIdChanged();
         void refreshRequired();
         void blocksTreeModeChanged();
+        void sceneSizeChanged();
 
     }; // END of class EasyGlobalSignals.
 

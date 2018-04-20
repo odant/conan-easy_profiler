@@ -67,6 +67,7 @@
 ************************************************************************/
 
 #include <easy/reader.h>
+#include <easy/profiler.h>
 
 #include "hashed_cstr.h"
 
@@ -186,20 +187,20 @@ namespace profiler {
 
 #ifdef EASY_PROFILER_HASHED_CSTR_DEFINED
 
-typedef ::std::unordered_map<::profiler::block_id_t, ::profiler::BlockStatistics*, ::profiler::passthrough_hash<::profiler::block_id_t> > StatsMap;
+using StatsMap = ::std::unordered_map<::profiler::block_id_t, ::profiler::BlockStatistics*, ::estd::hash<::profiler::block_id_t> >;
 
 /** \note It is absolutely safe to use hashed_cstr (which simply stores pointer) because std::unordered_map,
 which uses it as a key, exists only inside fillTreesFromFile function. */
-typedef ::std::unordered_map<::profiler::hashed_cstr, ::profiler::block_id_t> IdMap;
+using IdMap = ::std::unordered_map<::profiler::hashed_cstr, ::profiler::block_id_t>;
 
-typedef ::std::unordered_map<::profiler::hashed_cstr, ::profiler::BlockStatistics*> CsStatsMap;
+using CsStatsMap = ::std::unordered_map<::profiler::hashed_cstr, ::profiler::BlockStatistics*>;
 
 #else
 
 // TODO: Create optimized version of profiler::hashed_cstr for Linux too.
-typedef ::std::unordered_map<::profiler::block_id_t, ::profiler::BlockStatistics*, ::profiler::passthrough_hash<::profiler::block_id_t> > StatsMap;
-typedef ::std::unordered_map<::profiler::hashed_stdstring, ::profiler::block_id_t> IdMap;
-typedef ::std::unordered_map<::profiler::hashed_stdstring, ::profiler::BlockStatistics*> CsStatsMap;
+using StatsMap = ::std::unordered_map<::profiler::block_id_t, ::profiler::BlockStatistics*, ::estd::hash<::profiler::block_id_t> >;
+using IdMap = ::std::unordered_map<::profiler::hashed_stdstring, ::profiler::block_id_t>;
+using CsStatsMap = ::std::unordered_map<::profiler::hashed_stdstring, ::profiler::BlockStatistics*>;
 
 #endif
 
@@ -545,7 +546,7 @@ extern "C" {
             descriptors.push_back(descriptor);
 
             i += sz;
-            auto oldprogress = progress.exchange(static_cast<int>(15 * i / descriptors_memory_size), ::std::memory_order_release);
+            oldprogress = progress.exchange(static_cast<int>(15 * i / descriptors_memory_size), ::std::memory_order_release);
             if (oldprogress < 0)
             {
                 _log << "Reading was interrupted";
@@ -553,7 +554,7 @@ extern "C" {
             }
         }
 
-        typedef ::std::unordered_map<::profiler::thread_id_t, StatsMap, ::profiler::passthrough_hash<::profiler::thread_id_t> > PerThreadStats;
+        using PerThreadStats = ::std::unordered_map<::profiler::thread_id_t, StatsMap, ::estd::hash<::profiler::thread_id_t> >;
         PerThreadStats parent_statistics, frame_statistics;
         IdMap identification_table;
 
@@ -641,7 +642,7 @@ extern "C" {
                     }
                 }
 
-                auto oldprogress = progress.exchange(20 + static_cast<int>(70 * i / memory_size), ::std::memory_order_release);
+                oldprogress = progress.exchange(20 + static_cast<int>(70 * i / memory_size), ::std::memory_order_release);
                 if (oldprogress < 0)
                 {
                     _log << "Reading was interrupted";
@@ -796,7 +797,7 @@ extern "C" {
 
                     ++root.blocks_number;
                     root.children.emplace_back(block_index);// ::std::move(tree));
-                    if (desc->type() == ::profiler::BLOCK_TYPE_EVENT)
+                    if (desc->type() != ::profiler::BlockType::Block)
                         root.events.emplace_back(block_index);
 
 
@@ -807,7 +808,7 @@ extern "C" {
                     }
                 }
 
-                auto oldprogress = progress.exchange(20 + static_cast<int>(70 * i / memory_size), ::std::memory_order_release);
+                oldprogress = progress.exchange(20 + static_cast<int>(70 * i / memory_size), ::std::memory_order_release);
                 if (oldprogress < 0)
                 {
                     _log << "Reading was interrupted";
@@ -816,7 +817,8 @@ extern "C" {
             }
         }
 
-        if (progress.load(::std::memory_order_acquire) < 0)
+        oldprogress = progress.exchange(90, ::std::memory_order_release);
+        if (oldprogress < 0)
         {
             _log << "Reading was interrupted";
             return 0; // Loading interrupted
@@ -850,7 +852,7 @@ extern "C" {
                     {
                         auto& frame = blocks[i];
 
-                        if (descriptors[frame.node->id()]->type() == ::profiler::BLOCK_TYPE_BLOCK)
+                        if (descriptors[frame.node->id()]->type() == ::profiler::BlockType::Block)
                             ++root.frames_number;
 
                         frame.per_parent_stats = update_statistics(per_parent_statistics, frame, i, ~0U, blocks);//, root.thread_id, blocks);
@@ -909,7 +911,7 @@ extern "C" {
                 {
                     auto& frame = blocks[i];
 
-                    if (descriptors[frame.node->id()]->type() == ::profiler::BLOCK_TYPE_BLOCK)
+                    if (descriptors[frame.node->id()]->type() == ::profiler::BlockType::Block)
                         ++root.frames_number;
 
                     if (root.depth < frame.depth)
@@ -925,6 +927,7 @@ extern "C" {
         }
         // No need to delete BlockStatistics instances - they will be deleted inside BlocksTree destructors
 
+        progress.store(100, ::std::memory_order_release);
         return blocks_counter;
     }
 

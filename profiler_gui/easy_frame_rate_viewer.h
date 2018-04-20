@@ -60,7 +60,8 @@
 #include <QTimer>
 #include <vector>
 #include <deque>
-#include <easy/profiler.h>
+#include <utility>
+#include <stdint.h>
 
 //////////////////////////////////////////////////////////////////////////
 

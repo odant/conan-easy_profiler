@@ -93,7 +93,6 @@ protected:
     class QProgressDialog*        m_progress;
     class QLabel*                m_hintLabel;
     EasyTreeMode                      m_mode;
-    bool                        m_bColorRows;
     bool                           m_bLocked;
     bool             m_bSilentExpandCollapse;
     char m_columnsHiddenStatus[COL_COLUMNS_NUMBER];
@@ -136,8 +135,6 @@ private slots:
     void onItemCollapse(QTreeWidgetItem* _item);
     void onCurrentItemChange(QTreeWidgetItem* _item, QTreeWidgetItem*);
 
-    void onColorizeRowsTriggered(bool _colorize);
-
     void onSelectedThreadChange(::profiler::thread_id_t _id);
 
     void onSelectedBlockChange(uint32_t _block_index);
@@ -156,6 +153,11 @@ protected:
     void loadSettings();
     void saveSettings();
     void alignProgressBar();
+
+private:
+
+    void destroyProgressDialog();
+    void createProgressDialog();
 
 }; // END of class EasyTreeWidget.
 

@@ -64,11 +64,11 @@
 #include <QApplication>
 #include <QCoreApplication>
 #include <QStatusBar>
-#include <QDockWidget>
 #include <QFileDialog>
 #include <QAction>
 #include <QMenu>
 #include <QMenuBar>
+#include <QPushButton>
 #include <QCloseEvent>
 #include <QSettings>
 #include <QTextCodec>
@@ -87,6 +87,7 @@
 #include <QVBoxLayout>
 #include <QFile>
 #include <QFileInfo>
+#include <QTextStream>
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
 #include <QDragLeaveEvent>
@@ -102,6 +103,7 @@
 #include "globals.h"
 
 #include <easy/easy_net.h>
+#include <easy/profiler.h>
 
 #ifdef max
 #undef max
@@ -120,6 +122,17 @@ const auto NETWORK_CACHE_FILE = "easy_profiler_stream.cache";
 
 //////////////////////////////////////////////////////////////////////////
 
+inline const QStringList& UI_themes()
+{
+    static const QStringList themes {
+        "default"
+    };
+
+    return themes;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
 inline void clear_stream(std::stringstream& _stream)
 {
 #if defined(__GNUC__) && __GNUC__ < 5
@@ -131,21 +144,72 @@ inline void clear_stream(std::stringstream& _stream)
 #endif
 }
 
+inline void loadTheme(const QString& _theme)
+{
+    QFile file(QStringLiteral(":/themes/") + _theme);
+    if (file.open(QFile::ReadOnly | QFile::Text))
+    {
+        QTextStream in(&file);
+        QString style = in.readAll();
+        if (!style.isEmpty())
+            qApp->setStyleSheet(style);
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////
 
-EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastPort(::profiler::DEFAULT_PORT)
+EasyDockWidget::EasyDockWidget(const QString& title, QWidget* parent) : QDockWidget(title, parent)
 {
-    { QIcon icon(":/logo"); if (!icon.isNull()) QApplication::setWindowIcon(icon); }
+    auto floatingButton = new QPushButton();
+    floatingButton->setObjectName("EasyDockWidgetFloatButton");
+    floatingButton->setProperty("floating", isFloating());
+    connect(floatingButton, &QPushButton::clicked, [this, floatingButton] {
+        setFloating(!isFloating());
+        floatingButton->setProperty("floating", isFloating());
+        floatingButton->style()->unpolish(floatingButton);
+        floatingButton->style()->polish(floatingButton);
+        floatingButton->update();
+    });
+
+    auto closeButton = new QPushButton();
+    closeButton->setObjectName("EasyDockWidgetCloseButton");
+    connect(closeButton, &QPushButton::clicked, [this] {
+        close();
+    });
+
+    auto caption = new QWidget(this);
+    caption->setObjectName("EasyDockWidgetTitle");
+
+    auto lay = new QHBoxLayout(caption);
+    lay->setContentsMargins(0, 0, 0, 0);
+    lay->setSpacing(2);
+    lay->addWidget(new QLabel(title));
+    lay->addStretch(100);
+    lay->addWidget(floatingButton);
+    lay->addWidget(closeButton);
+
+    setTitleBarWidget(caption);
+}
+
+EasyDockWidget::~EasyDockWidget()
+{
+}
+
+EasyMainWindow::EasyMainWindow() : Parent(), m_theme("default"), m_lastAddress("localhost"), m_lastPort(::profiler::DEFAULT_PORT)
+{
+    { QIcon icon(":/images/logo"); if (!icon.isNull()) QApplication::setWindowIcon(icon); }
 
     setObjectName("ProfilerGUI_MainWindow");
     setWindowTitle(EASY_DEFAULT_WINDOW_TITLE);
     setDockNestingEnabled(true);
     setAcceptDrops(true);
     resize(800, 600);
-    
     setStatusBar(nullptr);
 
-    m_graphicsView = new QDockWidget("Diagram", this);
+    loadSettings();
+    loadTheme(m_theme);
+
+    m_graphicsView = new EasyDockWidget("Diagram", this);
     m_graphicsView->setObjectName("ProfilerGUI_Diagram");
     m_graphicsView->setMinimumHeight(50);
     m_graphicsView->setAllowedAreas(Qt::AllDockWidgetAreas);
@@ -153,7 +217,7 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
     auto graphicsView = new EasyGraphicsViewWidget(this);
     m_graphicsView->setWidget(graphicsView);
 
-    m_treeWidget = new QDockWidget("Hierarchy", this);
+    m_treeWidget = new EasyDockWidget("Hierarchy", this);
     m_treeWidget->setObjectName("ProfilerGUI_Hierarchy");
     m_treeWidget->setMinimumHeight(50);
     m_treeWidget->setAllowedAreas(Qt::AllDockWidgetAreas);
@@ -161,7 +225,7 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
     auto treeWidget = new EasyHierarchyWidget(this);
     m_treeWidget->setWidget(treeWidget);
 
-    m_fpsViewer = new QDockWidget("FPS Monitor", this);
+    m_fpsViewer = new EasyDockWidget("FPS Monitor", this);
     m_fpsViewer->setObjectName("ProfilerGUI_FPS");
     m_fpsViewer->setWidget(new EasyFrameRateViewer(this));
     m_fpsViewer->setAllowedAreas(Qt::TopDockWidgetArea | Qt::BottomDockWidgetArea);
@@ -172,16 +236,13 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
 
 #if EASY_GUI_USE_DESCRIPTORS_DOCK_WINDOW != 0
     auto descTree = new EasyDescWidget();
-    m_descTreeWidget = new QDockWidget("Blocks");
+    m_descTreeWidget = new EasyDockWidget("Blocks");
     m_descTreeWidget->setObjectName("ProfilerGUI_Blocks");
     m_descTreeWidget->setMinimumHeight(50);
     m_descTreeWidget->setAllowedAreas(Qt::AllDockWidgetAreas);
     m_descTreeWidget->setWidget(descTree);
     addDockWidget(Qt::BottomDockWidgetArea, m_descTreeWidget);
 #endif
-
-
-    loadSettings();
 
 
     auto toolbar = addToolBar("FileToolbar");
@@ -192,7 +253,7 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
     m_loadActionMenu = new QMenu(this);
     auto action = m_loadActionMenu->menuAction();
     action->setText("Open file");
-    action->setIcon(QIcon(":/Open"));
+    action->setIcon(QIcon(imagePath("open")));
     connect(action, &QAction::triggered, this, &This::onOpenFileClicked);
     toolbar->addAction(action);
 
@@ -203,8 +264,8 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
         m_loadActionMenu->addAction(action);
     }
 
-    m_saveAction = toolbar->addAction(QIcon(":/Save"), tr("Save"), this, SLOT(onSaveFileClicked(bool)));
-    m_deleteAction = toolbar->addAction(QIcon(":/Delete"), tr("Clear all"), this, SLOT(onDeleteClicked(bool)));
+    m_saveAction = toolbar->addAction(QIcon(imagePath("save")), tr("Save"), this, SLOT(onSaveFileClicked(bool)));
+    m_deleteAction = toolbar->addAction(QIcon(imagePath("delete")), tr("Clear all"), this, SLOT(onDeleteClicked(bool)));
 
     m_saveAction->setEnabled(false);
     m_deleteAction->setEnabled(false);
@@ -216,12 +277,12 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
     toolbar->setObjectName("ProfilerGUI_ProfileToolbar");
     toolbar->setContentsMargins(1, 0, 1, 0);
 
-    toolbar->addAction(QIcon(":/List"), tr("Blocks"), this, SLOT(onEditBlocksClicked(bool)));
-    m_captureAction = toolbar->addAction(QIcon(":/Start"), tr("Capture"), this, SLOT(onCaptureClicked(bool)));
+    toolbar->addAction(QIcon(imagePath("list")), tr("Blocks"), this, SLOT(onEditBlocksClicked(bool)));
+    m_captureAction = toolbar->addAction(QIcon(imagePath("start")), tr("Capture"), this, SLOT(onCaptureClicked(bool)));
     m_captureAction->setEnabled(false);
 
     toolbar->addSeparator();
-    m_connectAction = toolbar->addAction(QIcon(":/Connection"), tr("Connect"), this, SLOT(onConnectClicked(bool)));
+    m_connectAction = toolbar->addAction(QIcon(imagePath("connect")), tr("Connect"), this, SLOT(onConnectClicked(bool)));
 
     auto lbl = new QLabel("Address:", toolbar);
     lbl->setContentsMargins(5, 0, 2, 0);
@@ -243,8 +304,8 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
     m_portEdit->setFixedWidth(m_portEdit->fontMetrics().width(QString("000000")) + 10);
     toolbar->addWidget(m_portEdit);
 
-    connect(m_addressEdit, &QLineEdit::returnPressed, [this](){ onConnectClicked(true); });
-    connect(m_portEdit, &QLineEdit::returnPressed, [this](){ onConnectClicked(true); });
+    connect(m_addressEdit, &QLineEdit::returnPressed, [this] { onConnectClicked(true); });
+    connect(m_portEdit, &QLineEdit::returnPressed, [this] { onConnectClicked(true); });
 
 
 
@@ -253,15 +314,15 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
     toolbar->setObjectName("ProfilerGUI_SetupToolbar");
     toolbar->setContentsMargins(1, 0, 1, 0);
 
-    toolbar->addAction(QIcon(":/Expand"), "Expand all", this, SLOT(onExpandAllClicked(bool)));
-    toolbar->addAction(QIcon(":/Collapse"), "Collapse all", this, SLOT(onCollapseAllClicked(bool)));
+    toolbar->addAction(QIcon(imagePath("expand")), "Expand all", this, SLOT(onExpandAllClicked(bool)));
+    toolbar->addAction(QIcon(imagePath("collapse")), "Collapse all", this, SLOT(onCollapseAllClicked(bool)));
 
     toolbar->addSeparator();
     auto menu = new QMenu("Settings", this);
     menu->setToolTipsVisible(true);
 
     QToolButton* toolButton = new QToolButton(toolbar);
-    toolButton->setIcon(QIcon(":/Settings"));
+    toolButton->setIcon(QIcon(imagePath("settings")));
     toolButton->setMenu(menu);
     toolButton->setPopupMode(QToolButton::InstantPopup);
     toolbar->addWidget(toolButton);
@@ -275,12 +336,12 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
         auto f = action->font();
         f.setBold(true);
         action->setFont(f);
-        action->setIcon(QIcon(":/Stats"));
+        action->setIcon(QIcon(imagePath("stats")));
     }
     else
     {
         action->setText("Statistics disabled");
-        action->setIcon(QIcon(":/Stats-off"));
+        action->setIcon(QIcon(imagePath("stats-off")));
     }
 
 
@@ -442,12 +503,12 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
     submenu->addSeparator();
     auto w = new QWidget(submenu);
     auto l = new QHBoxLayout(w);
-    l->setContentsMargins(33, 1, 1, 1);
+    l->setContentsMargins(26, 1, 16, 1);
     l->addWidget(new QLabel("Min blocks spacing, px", w), 0, Qt::AlignLeft);
     auto spinbox = new QSpinBox(w);
     spinbox->setRange(0, 400);
     spinbox->setValue(EASY_GLOBALS.blocks_spacing);
-    spinbox->setFixedWidth(50);
+    spinbox->setFixedWidth(70);
     connect(spinbox, SIGNAL(valueChanged(int)), this, SLOT(onSpacingChange(int)));
     l->addWidget(spinbox);
     w->setLayout(l);
@@ -457,12 +518,12 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
 
     w = new QWidget(submenu);
     l = new QHBoxLayout(w);
-    l->setContentsMargins(33, 1, 1, 1);
+    l->setContentsMargins(26, 1, 16, 1);
     l->addWidget(new QLabel("Min blocks size, px", w), 0, Qt::AlignLeft);
     spinbox = new QSpinBox(w);
     spinbox->setRange(1, 400);
     spinbox->setValue(EASY_GLOBALS.blocks_size_min);
-    spinbox->setFixedWidth(50);
+    spinbox->setFixedWidth(70);
     connect(spinbox, SIGNAL(valueChanged(int)), this, SLOT(onMinSizeChange(int)));
     l->addWidget(spinbox);
     w->setLayout(l);
@@ -472,12 +533,12 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
 
     w = new QWidget(submenu);
     l = new QHBoxLayout(w);
-    l->setContentsMargins(33, 1, 1, 1);
+    l->setContentsMargins(26, 1, 16, 1);
     l->addWidget(new QLabel("Blocks narrow size, px", w), 0, Qt::AlignLeft);
     spinbox = new QSpinBox(w);
     spinbox->setRange(1, 400);
     spinbox->setValue(EASY_GLOBALS.blocks_narrow_size);
-    spinbox->setFixedWidth(50);
+    spinbox->setFixedWidth(70);
     connect(spinbox, SIGNAL(valueChanged(int)), this, SLOT(onNarrowSizeChange(int)));
     l->addWidget(spinbox);
     w->setLayout(l);
@@ -491,12 +552,12 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
     submenu = menu->addMenu("FPS Monitor");
     w = new QWidget(submenu);
     l = new QHBoxLayout(w);
-    l->setContentsMargins(33, 1, 1, 1);
+    l->setContentsMargins(26, 1, 16, 1);
     l->addWidget(new QLabel("Request interval, ms", w), 0, Qt::AlignLeft);
     spinbox = new QSpinBox(w);
     spinbox->setRange(1, 600000);
     spinbox->setValue(EASY_GLOBALS.fps_timer_interval);
-    spinbox->setFixedWidth(50);
+    spinbox->setFixedWidth(70);
     connect(spinbox, SIGNAL(valueChanged(int)), this, SLOT(onFpsIntervalChange(int)));
     l->addWidget(spinbox);
     w->setLayout(l);
@@ -506,12 +567,12 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
 
     w = new QWidget(submenu);
     l = new QHBoxLayout(w);
-    l->setContentsMargins(33, 1, 1, 1);
+    l->setContentsMargins(26, 1, 16, 1);
     l->addWidget(new QLabel("Max history size", w), 0, Qt::AlignLeft);
     spinbox = new QSpinBox(w);
     spinbox->setRange(2, 200);
     spinbox->setValue(EASY_GLOBALS.max_fps_history);
-    spinbox->setFixedWidth(50);
+    spinbox->setFixedWidth(70);
     connect(spinbox, SIGNAL(valueChanged(int)), this, SLOT(onFpsHistoryChange(int)));
     l->addWidget(spinbox);
     w->setLayout(l);
@@ -521,12 +582,12 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
 
     w = new QWidget(submenu);
     l = new QHBoxLayout(w);
-    l->setContentsMargins(33, 1, 1, 1);
+    l->setContentsMargins(26, 1, 16, 1);
     l->addWidget(new QLabel("Line width, px", w), 0, Qt::AlignLeft);
     spinbox = new QSpinBox(w);
     spinbox->setRange(1, 6);
     spinbox->setValue(EASY_GLOBALS.fps_widget_line_width);
-    spinbox->setFixedWidth(50);
+    spinbox->setFixedWidth(70);
     connect(spinbox, SIGNAL(valueChanged(int)), this, SLOT(onFpsMonitorLineWidthChange(int)));
     l->addWidget(spinbox);
     w->setLayout(l);
@@ -591,18 +652,46 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
     actionGroup->setExclusive(true);
 
     auto default_codec_mib = QTextCodec::codecForLocale()->mibEnum();
-    foreach(int mib, QTextCodec::availableMibs())
     {
-        auto codec = QTextCodec::codecForMib(mib)->name();
+        QList<QAction*> actions;
 
-        action = new QAction(codec, actionGroup);
-        action->setCheckable(true);
-        if (mib == default_codec_mib)
-            action->setChecked(true);
+        for (int mib : QTextCodec::availableMibs())
+        {
+            auto codec = QTextCodec::codecForMib(mib)->name();
 
-        submenu->addAction(action);
-        connect(action, &QAction::triggered, this, &This::onEncodingChanged);
+            action = new QAction(codec, actionGroup);
+            action->setData(mib);
+            action->setCheckable(true);
+            if (mib == default_codec_mib)
+                action->setChecked(true);
+
+            actions.push_back(action);
+            connect(action, &QAction::triggered, this, &This::onEncodingChanged);
+        }
+
+        qSort(actions.begin(), actions.end(), [](QAction* lhs, QAction* rhs) {
+            return lhs->text().compare(rhs->text(), Qt::CaseInsensitive) < 0;
+        });
+
+        submenu->addActions(actions);
     }
+
+
+
+    menu->addSeparator();
+    submenu = menu->addMenu("Theme");
+    actionGroup = new QActionGroup(this);
+    actionGroup->setExclusive(true);
+
+    for (const auto& theme : UI_themes())
+    {
+        action = new QAction(theme, actionGroup);
+        action->setCheckable(true);
+        action->setChecked(action->text() == EASY_GLOBALS.theme);
+        connect(action, &QAction::triggered, this, &EasyMainWindow::onThemeChange);
+        submenu->addAction(action);
+    }
+
 
     auto tb_height = toolbar->height() + 4;
     toolbar = addToolBar("FrameToolbar");
@@ -637,14 +726,6 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
     connect(&m_fpsRequestTimer, &QTimer::timeout, this, &This::onFrameTimeRequestTimeout);
     
 
-    m_progress = new QProgressDialog("Loading file...", "Cancel", 0, 100, this);
-    m_progress->setFixedWidth(300);
-    m_progress->setWindowTitle(EASY_DEFAULT_WINDOW_TITLE);
-    m_progress->setModal(true);
-    m_progress->setValue(100);
-    //m_progress->hide();
-    connect(m_progress, &QProgressDialog::canceled, this, &This::onFileReaderCancel);
-
     loadGeometry();
 
     if(QCoreApplication::arguments().size() > 1)
@@ -659,7 +740,6 @@ EasyMainWindow::EasyMainWindow() : Parent(), m_lastAddress("localhost"), m_lastP
 
 EasyMainWindow::~EasyMainWindow()
 {
-    delete m_progress;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -702,6 +782,22 @@ void EasyMainWindow::dropEvent(QDropEvent* drop_event)
         }
 
         loadFile(urls.front().toLocalFile());
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+void EasyMainWindow::onThemeChange(bool)
+{
+    auto action = qobject_cast<QAction*>(sender());
+    if (action == nullptr)
+        return;
+
+    auto newTheme = action->text();
+    if (m_theme != newTheme)
+    {
+        m_theme = std::move(newTheme);
+        QMessageBox::information(this, "Theme", "You should restart the application to apply the theme.");
     }
 }
 
@@ -775,20 +871,16 @@ void EasyMainWindow::loadFile(const QString& filename)
 {
     const auto i = filename.lastIndexOf(QChar('/'));
     const auto j = filename.lastIndexOf(QChar('\\'));
-    m_progress->setLabelText(QString("Loading %1...").arg(filename.mid(::std::max(i, j) + 1)));
 
-    m_progress->setValue(0);
-    m_progress->show();
+    createProgressDialog(QString("Loading %1...").arg(filename.mid(::std::max(i, j) + 1)));
+
     m_readerTimer.start(LOADER_TIMER_INTERVAL);
     m_reader.load(filename);
 }
 
 void EasyMainWindow::readStream(::std::stringstream& data)
 {
-    m_progress->setLabelText(tr("Reading from stream..."));
-
-    m_progress->setValue(0);
-    m_progress->show();
+    createProgressDialog(tr("Reading from stream..."));
     m_readerTimer.start(LOADER_TIMER_INTERVAL);
     m_reader.load(data);
 }
@@ -994,10 +1086,14 @@ void EasyMainWindow::onExitClicked(bool)
 
 void EasyMainWindow::onEncodingChanged(bool)
 {
-   auto _sender = qobject_cast<QAction*>(sender());
-   auto name = _sender->text();
-   QTextCodec *codec = QTextCodec::codecForName(name.toStdString().c_str());
-   QTextCodec::setCodecForLocale(codec);
+    auto action = qobject_cast<QAction*>(sender());
+    if (action == nullptr)
+        return;
+
+    const int mib = action->data().toInt();
+    auto codec = QTextCodec::codecForMib(mib);
+    if (codec != nullptr)
+        QTextCodec::setCodecForLocale(codec);
 }
 
 void EasyMainWindow::onChronoTextPosChanged(bool)
@@ -1027,12 +1123,12 @@ void EasyMainWindow::onEnableDisableStatistics(bool _checked)
         if (_checked)
         {
             action->setText("Statistics enabled");
-            action->setIcon(QIcon(":/Stats"));
+            action->setIcon(QIcon(imagePath("stats")));
         }
         else
         {
             action->setText("Statistics disabled");
-            action->setIcon(QIcon(":/Stats-off"));
+            action->setIcon(QIcon(imagePath("stats-off")));
         }
     }
 }
@@ -1316,6 +1412,16 @@ void EasyMainWindow::loadSettings()
     auto default_codec = QTextCodec::codecForMib(default_codec_mib);
     QTextCodec::setCodecForLocale(default_codec);
 
+    auto theme = settings.value("theme");
+    if (theme.isValid())
+    {
+        EASY_GLOBALS.theme = m_theme = theme.toString();
+    }
+    else
+    {
+        m_theme = EASY_GLOBALS.theme;
+    }
+
     settings.endGroup();
 }
 
@@ -1372,8 +1478,33 @@ void EasyMainWindow::saveSettingsAndGeometry()
     settings.setValue("max_fps_history", EASY_GLOBALS.max_fps_history);
     settings.setValue("fps_widget_line_width", EASY_GLOBALS.fps_widget_line_width);
     settings.setValue("encoding", QTextCodec::codecForLocale()->name());
+    settings.setValue("theme", m_theme);
 
     settings.endGroup();
+}
+
+void EasyMainWindow::destroyProgressDialog()
+{
+    if (m_progress != nullptr)
+    {
+        m_progress->setValue(100);
+        m_progress->deleteLater();
+        m_progress = nullptr;
+    }
+}
+
+void EasyMainWindow::createProgressDialog(const QString& text)
+{
+    destroyProgressDialog();
+
+    m_progress = new QProgressDialog(text, QStringLiteral("Cancel"), 0, 100, this);
+    connect(m_progress, &QProgressDialog::canceled, this, &This::onFileReaderCancel);
+
+    m_progress->setFixedWidth(300);
+    m_progress->setWindowTitle(EASY_DEFAULT_WINDOW_TITLE);
+    m_progress->setModal(true);
+    m_progress->setValue(0);
+    m_progress->show();
 }
 
 void EasyMainWindow::setDisconnected(bool _showMessage)
@@ -1386,7 +1517,7 @@ void EasyMainWindow::setDisconnected(bool _showMessage)
 
     EASY_GLOBALS.connected = false;
     m_captureAction->setEnabled(false);
-    m_connectAction->setIcon(QIcon(":/Connection"));
+    m_connectAction->setIcon(QIcon(imagePath("connect")));
     m_connectAction->setText(tr("Connect"));
 
     m_eventTracingEnableAction->setEnabled(false);
@@ -1696,15 +1827,14 @@ void EasyMainWindow::onFileReaderTimeout()
         m_reader.interrupt();
 
         m_readerTimer.stop();
-        m_progress->setValue(100);
-        //m_progress->hide();
+        destroyProgressDialog();
 
         if (EASY_GLOBALS.all_items_expanded_by_default)
         {
             onExpandAllClicked(true);
         }
     }
-    else
+    else if (m_progress != nullptr)
     {
         m_progress->setValue(m_reader.progress());
     }
@@ -1714,8 +1844,7 @@ void EasyMainWindow::onFileReaderCancel()
 {
     m_readerTimer.stop();
     m_reader.interrupt();
-    m_progress->setValue(100);
-    //m_progress->hide();
+    destroyProgressDialog();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1847,13 +1976,13 @@ QString EasyFileReader::getError()
 void EasyMainWindow::onEventTracingPriorityChange(bool _checked)
 {
     if (EASY_GLOBALS.connected)
-        m_listener.send(profiler::net::BoolMessage(profiler::net::MESSAGE_TYPE_EVENT_TRACING_PRIORITY, _checked));
+        m_listener.send(profiler::net::BoolMessage(profiler::net::MessageType::Change_Event_Tracing_Priority, _checked));
 }
 
 void EasyMainWindow::onEventTracingEnableChange(bool _checked)
 {
     if (EASY_GLOBALS.connected)
-        m_listener.send(profiler::net::BoolMessage(profiler::net::MESSAGE_TYPE_EVENT_TRACING_STATUS, _checked));
+        m_listener.send(profiler::net::BoolMessage(profiler::net::MessageType::Change_Event_Tracing_Status, _checked));
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1869,9 +1998,13 @@ void EasyMainWindow::onFrameTimeEditFinish()
 
     EASY_GLOBALS.frame_time = text.toFloat() * 1e3f;
 
-    disconnect(&EASY_GLOBALS.events, &::profiler_gui::EasyGlobalSignals::expectedFrameTimeChanged, this, &This::onFrameTimeChanged);
+    disconnect(&EASY_GLOBALS.events, &::profiler_gui::EasyGlobalSignals::expectedFrameTimeChanged,
+               this, &This::onFrameTimeChanged);
+
     emit EASY_GLOBALS.events.expectedFrameTimeChanged();
-    connect(&EASY_GLOBALS.events, &::profiler_gui::EasyGlobalSignals::expectedFrameTimeChanged, this, &This::onFrameTimeChanged);
+
+    connect(&EASY_GLOBALS.events, &::profiler_gui::EasyGlobalSignals::expectedFrameTimeChanged,
+            this, &This::onFrameTimeChanged);
 }
 
 void EasyMainWindow::onFrameTimeChanged()
@@ -1893,51 +2026,24 @@ void EasyMainWindow::onConnectClicked(bool)
 
     QString address = m_addressEdit->text();
     const decltype(m_lastPort) port = m_portEdit->text().toUShort();
-    const bool isSameAddress = (EASY_GLOBALS.connected && m_listener.port() == port && address.toStdString() == m_listener.address());
+
+    const bool isSameAddress = (EASY_GLOBALS.connected && m_listener.port() == port &&
+        address.toStdString() == m_listener.address());
 
     profiler::net::EasyProfilerStatus reply(false, false, false);
     if (!m_listener.connect(address.toStdString().c_str(), port, reply))
     {
-        /*if (EASY_GLOBALS.connected && !isSameAddress)
+        QMessageBox::warning(this, "Warning", QString("Cannot connect to %1").arg(address), QMessageBox::Close);
+        if (EASY_GLOBALS.connected)
         {
-            if (QMessageBox::warning(this, "Warning", QString("Cannot connect to %1\n\nRestore previous connection?").arg(address),
-                QMessageBox::Yes, QMessageBox::No) == QMessageBox::Yes)
-            {
-                if (!m_listener.connect(m_lastAddress.toStdString().c_str(), m_lastPort, reply))
-                {
-                    QMessageBox::warning(this, "Warning", "Cannot restore previous connection", QMessageBox::Close);
-                    setDisconnected(false);
-                    m_lastAddress = ::std::move(address);
-                    m_lastPort = port;
-                }
-                else
-                {
-                    m_addressEdit->setText(m_lastAddress);
-                    m_portEdit->setText(QString::number(m_lastPort));
-                    //QMessageBox::information(this, "Information", "Previous connection restored", QMessageBox::Close);
-                }
-            }
-            else
-            {
-                setDisconnected(false);
-                m_lastAddress = ::std::move(address);
-                m_lastPort = port;
-            }
+            m_listener.closeSocket();
+            setDisconnected(false);
         }
-        else*/
-        {
-            QMessageBox::warning(this, "Warning", QString("Cannot connect to %1").arg(address), QMessageBox::Close);
-            if (EASY_GLOBALS.connected)
-            {
-                m_listener.closeSocket();
-                setDisconnected(false);
-            }
 
-            if (!isSameAddress)
-            {
-                m_lastAddress = ::std::move(address);
-                m_lastPort = port;
-            }
+        if (!isSameAddress)
+        {
+            m_lastAddress = ::std::move(address);
+            m_lastPort = port;
         }
 
         return;
@@ -1949,7 +2055,7 @@ void EasyMainWindow::onConnectClicked(bool)
     qInfo() << "Connected successfully";
     EASY_GLOBALS.connected = true;
     m_captureAction->setEnabled(true);
-    m_connectAction->setIcon(QIcon(":/Connection-on"));
+    m_connectAction->setIcon(QIcon(imagePath("connected")));
     m_connectAction->setText(tr("Disconnect"));
 
     if (m_fpsViewer->isVisible())
@@ -2028,7 +2134,7 @@ void EasyMainWindow::onCaptureClicked(bool)
     button->setAutoRaise(true);
     button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     button->setIconSize(::profiler_gui::ICONS_SIZE);
-    button->setIcon(QIcon(":/Stop"));
+    button->setIcon(QIcon(imagePath("stop")));
     button->setText("Stop");
     m_listenerDialog->addButton(button, QMessageBox::AcceptRole);
 
@@ -2341,7 +2447,7 @@ bool EasySocketListener::connect(const char* _ipaddress, uint16_t _port, profile
         }
 
         auto message = reinterpret_cast<const ::profiler::net::EasyProfilerStatus*>(buffer);
-        if (message->isEasyNetMessage() && message->type == profiler::net::MESSAGE_TYPE_ACCEPTED_CONNECTION)
+        if (message->isEasyNetMessage() && message->type == profiler::net::MessageType::Connection_Accepted)
             _reply = *message;
 
         m_address = _ipaddress;
@@ -2368,7 +2474,7 @@ bool EasySocketListener::startCapture()
 
     clearData();
 
-    profiler::net::Message request(profiler::net::MESSAGE_TYPE_REQUEST_START_CAPTURE);
+    profiler::net::Message request(profiler::net::MessageType::Request_Start_Capture);
     m_easySocket.send(&request, sizeof(request));
 
     if (m_easySocket.isDisconnected()) {
@@ -2392,7 +2498,7 @@ void EasySocketListener::stopCapture()
         return;
 
     //m_bStopReceive.store(true, ::std::memory_order_release);
-    profiler::net::Message request(profiler::net::MESSAGE_TYPE_REQUEST_STOP_CAPTURE);
+    profiler::net::Message request(profiler::net::MessageType::Request_Stop_Capture);
     m_easySocket.send(&request, sizeof(request));
 
     //m_thread.join();
@@ -2444,7 +2550,7 @@ void EasySocketListener::requestBlocksDescription()
 
     clearData();
 
-    profiler::net::Message request(profiler::net::MESSAGE_TYPE_REQUEST_BLOCKS_DESCRIPTION);
+    profiler::net::Message request(profiler::net::MessageType::Request_Blocks_Description);
     m_easySocket.send(&request, sizeof(request));
 
     if(m_easySocket.isDisconnected()  ){
@@ -2480,7 +2586,7 @@ bool EasySocketListener::requestFrameTime()
         m_bInterrupt.store(false, ::std::memory_order_release);
     }
 
-    profiler::net::Message request(profiler::net::MESSAGE_TYPE_REQUEST_MAIN_FRAME_TIME_MAX_AVG_US);
+    profiler::net::Message request(profiler::net::MessageType::Request_MainThread_FPS);
     m_easySocket.send(&request, sizeof(request));
 
     if (m_easySocket.isDisconnected())
@@ -2499,9 +2605,8 @@ bool EasySocketListener::requestFrameTime()
 
 void EasySocketListener::listenCapture()
 {
-    // TODO: Merge functions listenCapture() and listenDescription()
+    EASY_STATIC_CONSTEXPR int buffer_size = 8 * 1024 * 1024;
 
-    static const int buffer_size = 8 * 1024 * 1024;
     char* buffer = new char[buffer_size];
     int seek = 0, bytes = 0;
     auto timeBegin = ::std::chrono::system_clock::now();
@@ -2511,7 +2616,7 @@ void EasySocketListener::listenCapture()
     {
         if (m_bStopReceive.load(::std::memory_order_acquire))
         {
-            profiler::net::Message request(profiler::net::MESSAGE_TYPE_REQUEST_STOP_CAPTURE);
+            profiler::net::Message request(profiler::net::MessageType::Request_Stop_Capture);
             m_easySocket.send(&request, sizeof(request));
             m_bStopReceive.store(false, ::std::memory_order_release);
         }
@@ -2554,24 +2659,24 @@ void EasySocketListener::listenCapture()
 
             switch (message->type)
             {
-                case profiler::net::MESSAGE_TYPE_ACCEPTED_CONNECTION:
+                case profiler::net::MessageType::Connection_Accepted:
                 {
-                    qInfo() << "Receive MESSAGE_TYPE_ACCEPTED_CONNECTION";
+                    qInfo() << "Receive MessageType::Connection_Accepted";
                     //m_easySocket.send(&request, sizeof(request));
                     seek += sizeof(profiler::net::Message);
                     break;
                 }
 
-                case profiler::net::MESSAGE_TYPE_REPLY_START_CAPTURING:
+                case profiler::net::MessageType::Reply_Capturing_Started:
                 {
-                    qInfo() << "Receive MESSAGE_TYPE_REPLY_START_CAPTURING";
+                    qInfo() << "Receive MessageType::Reply_Capturing_Started";
                     seek += sizeof(profiler::net::Message);
                     break;
                 }
 
-                case profiler::net::MESSAGE_TYPE_REPLY_BLOCKS_END:
+                case profiler::net::MessageType::Reply_Blocks_End:
                 {
-                    qInfo() << "Receive MESSAGE_TYPE_REPLY_BLOCKS_END";
+                    qInfo() << "Receive MessageType::Reply_Blocks_End";
                     seek += sizeof(profiler::net::Message);
 
                     const auto dt = ::std::chrono::duration_cast<std::chrono::milliseconds>(::std::chrono::system_clock::now() - timeBegin);
@@ -2586,12 +2691,12 @@ void EasySocketListener::listenCapture()
                     break;
                 }
 
-                case profiler::net::MESSAGE_TYPE_REPLY_BLOCKS:
+                case profiler::net::MessageType::Reply_Blocks:
                 {
-                    qInfo() << "Receive MESSAGE_TYPE_REPLY_BLOCKS";
+                    qInfo() << "Receive MessageType::Reply_Blocks";
 
                     seek += sizeof(profiler::net::DataMessage);
-                    profiler::net::DataMessage* dm = (profiler::net::DataMessage*)message;
+                    auto dm = (profiler::net::DataMessage*)message;
                     timeBegin = std::chrono::system_clock::now();
 
                     int neededSize = dm->size;
@@ -2641,7 +2746,7 @@ void EasySocketListener::listenCapture()
 
                     if (m_bStopReceive.load(::std::memory_order_acquire))
                     {
-                        profiler::net::Message request(profiler::net::MESSAGE_TYPE_REQUEST_STOP_CAPTURE);
+                        profiler::net::Message request(profiler::net::MessageType::Request_Stop_Capture);
                         m_easySocket.send(&request, sizeof(request));
                         m_bStopReceive.store(false, ::std::memory_order_release);
                     }
@@ -2666,9 +2771,8 @@ void EasySocketListener::listenCapture()
 
 void EasySocketListener::listenDescription()
 {
-    // TODO: Merge functions listenDescription() and listenCapture()
+    EASY_STATIC_CONSTEXPR int buffer_size = 8 * 1024 * 1024;
 
-    static const int buffer_size = 8 * 1024 * 1024;
     char* buffer = new char[buffer_size];
     int seek = 0, bytes = 0;
 
@@ -2713,16 +2817,16 @@ void EasySocketListener::listenDescription()
 
             switch (message->type)
             {
-                case profiler::net::MESSAGE_TYPE_ACCEPTED_CONNECTION:
+                case profiler::net::MessageType::Connection_Accepted:
                 {
-                    qInfo() << "Receive MESSAGE_TYPE_ACCEPTED_CONNECTION";
+                    qInfo() << "Receive MessageType::Connection_Accepted";
                     seek += sizeof(profiler::net::Message);
                     break;
                 }
 
-                case profiler::net::MESSAGE_TYPE_REPLY_BLOCKS_DESCRIPTION_END:
+                case profiler::net::MessageType::Reply_Blocks_Description_End:
                 {
-                    qInfo() << "Receive MESSAGE_TYPE_REPLY_BLOCKS_DESCRIPTION_END";
+                    qInfo() << "Receive MessageType::Reply_Blocks_Description_End";
                     seek += sizeof(profiler::net::Message);
 
                     seek = 0;
@@ -2733,12 +2837,12 @@ void EasySocketListener::listenDescription()
                     break;
                 }
 
-                case profiler::net::MESSAGE_TYPE_REPLY_BLOCKS_DESCRIPTION:
+                case profiler::net::MessageType::Reply_Blocks_Description:
                 {
-                    qInfo() << "Receive MESSAGE_TYPE_REPLY_BLOCKS";
+                    qInfo() << "Receive MessageType::Reply_Blocks_Description";
 
                     seek += sizeof(profiler::net::DataMessage);
-                    profiler::net::DataMessage* dm = (profiler::net::DataMessage*)message;
+                    auto dm = (profiler::net::DataMessage*)message;
                     int neededSize = dm->size;
 
                     buf = buffer + seek;
@@ -2798,9 +2902,8 @@ void EasySocketListener::listenDescription()
 
 void EasySocketListener::listenFrameTime()
 {
-    // TODO: Merge functions listenDescription() and listenCapture()
+    EASY_STATIC_CONSTEXPR size_t buffer_size = sizeof(::profiler::net::TimestampMessage) << 2;
 
-    static const int buffer_size = sizeof(::profiler::net::TimestampMessage) << 2;
     char buffer[buffer_size] = {};
     int seek = 0, bytes = 0;
 
@@ -2844,21 +2947,21 @@ void EasySocketListener::listenFrameTime()
 
             switch (message->type)
             {
-                case profiler::net::MESSAGE_TYPE_ACCEPTED_CONNECTION:
-                case profiler::net::MESSAGE_TYPE_REPLY_START_CAPTURING:
+                case profiler::net::MessageType::Connection_Accepted:
+                case profiler::net::MessageType::Reply_Capturing_Started:
                 {
                     seek += sizeof(profiler::net::Message);
                     break;
                 }
 
-                case profiler::net::MESSAGE_TYPE_REPLY_MAIN_FRAME_TIME_MAX_AVG_US:
+                case profiler::net::MessageType::Reply_MainThread_FPS:
                 {
-                    //qInfo() << "Receive MESSAGE_TYPE_REPLY_MAIN_FRAME_TIME_MAX_AVG_US";
+                    //qInfo() << "Receive MessageType::Reply_MainThread_FPS";
 
                     seek += sizeof(profiler::net::TimestampMessage);
                     if (seek <= buffer_size)
                     {
-                        profiler::net::TimestampMessage* timestampMessage = (profiler::net::TimestampMessage*)message;
+                        auto timestampMessage = (profiler::net::TimestampMessage*)message;
                         m_frameMax.store(timestampMessage->maxValue, ::std::memory_order_release);
                         m_frameAvg.store(timestampMessage->avgValue, ::std::memory_order_release);
                         m_bFrameTimeReady.store(true, ::std::memory_order_release);

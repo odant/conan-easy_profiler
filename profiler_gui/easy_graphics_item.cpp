@@ -72,9 +72,10 @@ enum BlockItemState : int8_t
 
 //////////////////////////////////////////////////////////////////////////
 
-const int MIN_SYNC_SPACING = 1;
-const int MIN_SYNC_SIZE = 3;
-const QRgb BORDERS_COLOR = ::profiler::colors::Grey600 & 0x00ffffff;// 0x00686868;
+EASY_CONSTEXPR int MIN_SYNC_SPACING = 1;
+EASY_CONSTEXPR int MIN_SYNC_SIZE = 3;
+EASY_CONSTEXPR int EVENT_HEIGHT = 4;
+EASY_CONSTEXPR QRgb BORDERS_COLOR = ::profiler::colors::Grey600 & 0x00ffffff;// 0x00686868;
 
 inline QRgb selectedItemBorderColor(::profiler::color_t _color) {
     return ::profiler_gui::isLightColor(_color, 192) ? ::profiler::colors::Black : ::profiler::colors::RichRed;
@@ -222,7 +223,7 @@ void EasyGraphicsItem::paintChildren(const float _minWidth, const int _narrowSiz
 
         const auto& itemDesc = easyDescriptor(itemBlock.tree.node->id());
 
-        int h = 0, flags = 0;
+        int h = 0;
         bool do_paint_children = false;
         if ((EASY_GLOBALS.hide_narrow_children && w < EASY_GLOBALS.blocks_narrow_size) || !itemBlock.expanded)
         {
@@ -245,7 +246,7 @@ void EasyGraphicsItem::paintChildren(const float _minWidth, const int _narrowSiz
                 //p.inverseColor = 0xffffffff - p.previousColor;
                 p.is_light = ::profiler_gui::isLightColor(p.previousColor);
                 p.textColor = ::profiler_gui::textColorForFlag(p.is_light);
-                p.brush.setColor(p.previousColor);
+                p.brush.setColor(QColor::fromRgba(p.previousColor));
                 _painter->setBrush(p.brush);
             }
 
@@ -304,11 +305,6 @@ void EasyGraphicsItem::paintChildren(const float _minWidth, const int _narrowSiz
             if (wprev < EASY_GLOBALS.blocks_narrow_size)
                 continue;
 
-            if (totalHeight > ::profiler_gui::GRAPHICS_ROW_SIZE)
-                flags = Qt::AlignCenter;
-            else if (!(item.width() < 1))
-                flags = Qt::AlignHCenter;
-
             if (dw > 1)
             {
                 w -= dw;
@@ -328,7 +324,7 @@ void EasyGraphicsItem::paintChildren(const float _minWidth, const int _narrowSiz
                 //p.inverseColor = 0xffffffff - p.previousColor;
                 p.is_light = ::profiler_gui::isLightColor(p.previousColor);
                 p.textColor = ::profiler_gui::textColorForFlag(p.is_light);
-                p.brush.setColor(p.previousColor);
+                p.brush.setColor(QColor::fromRgba(p.previousColor));
                 _painter->setBrush(p.brush);
             }
 
@@ -395,9 +391,6 @@ void EasyGraphicsItem::paintChildren(const float _minWidth, const int _narrowSiz
                 continue;
             }
 
-            if (!(item.width() < 1))
-                flags = Qt::AlignHCenter;
-
             if (dw > 1)
             {
                 w -= dw;
@@ -419,8 +412,8 @@ void EasyGraphicsItem::paintChildren(const float _minWidth, const int _narrowSiz
             _painter->setFont(EASY_GLOBALS.selected_item_font);
 
         // drawing text
-        auto name = *itemBlock.tree.node->name() != 0 ? itemBlock.tree.node->name() : itemDesc.name();
-        _painter->drawText(p.rect, flags, ::profiler_gui::toUnicode(name));
+        auto name = easyBlockName(itemBlock.tree, itemDesc);
+        _painter->drawText(p.rect, Qt::AlignCenter, ::profiler_gui::toUnicode(name));
 
         // restore previous pen color
         if (p.previousPenStyle == Qt::NoPen)
@@ -630,7 +623,7 @@ void EasyGraphicsItem::paint(QPainter* _painter, const QStyleOptionGraphicsItem*
 #endif
 
                 const auto& itemDesc = easyDescriptor(itemBlock.tree.node->id());
-                int h = 0, flags = 0;
+                int h = 0;
 
 #ifdef EASY_GRAPHICS_ITEM_RECURSIVE_PAINT
                 bool do_paint_children = false;
@@ -657,7 +650,7 @@ void EasyGraphicsItem::paint(QPainter* _painter, const QStyleOptionGraphicsItem*
                         //p.inverseColor = 0xffffffff - p.previousColor;
                         p.is_light = ::profiler_gui::isLightColor(p.previousColor);
                         p.textColor = ::profiler_gui::textColorForFlag(p.is_light);
-                        p.brush.setColor(p.previousColor);
+                        p.brush.setColor(QColor::fromRgba(p.previousColor));
                         _painter->setBrush(p.brush);
                     }
 
@@ -716,11 +709,6 @@ void EasyGraphicsItem::paint(QPainter* _painter, const QStyleOptionGraphicsItem*
                     if (wprev < EASY_GLOBALS.blocks_narrow_size)
                         continue;
 
-                    if (totalHeight > ::profiler_gui::GRAPHICS_ROW_SIZE)
-                        flags = Qt::AlignCenter;
-                    else if (!(item.width() < 1))
-                        flags = Qt::AlignHCenter;
-
                     if (dw > 1) {
                         w -= dw;
                         x += 2;
@@ -739,7 +727,7 @@ void EasyGraphicsItem::paint(QPainter* _painter, const QStyleOptionGraphicsItem*
                         //p.inverseColor = 0xffffffff - p.previousColor;
                         p.is_light = ::profiler_gui::isLightColor(p.previousColor);
                         p.textColor = ::profiler_gui::textColorForFlag(p.is_light);
-                        p.brush.setColor(p.previousColor);
+                        p.brush.setColor(QColor::fromRgba(p.previousColor));
                         _painter->setBrush(p.brush);
                     }
 
@@ -813,8 +801,6 @@ void EasyGraphicsItem::paint(QPainter* _painter, const QStyleOptionGraphicsItem*
 #ifndef EASY_GRAPHICS_ITEM_RECURSIVE_PAINT
                     dont_skip_children(next_level, item.children_begin, BLOCK_ITEM_DO_PAINT);
 #endif
-                    if (!(item.width() < 1))
-                        flags = Qt::AlignHCenter;
 
                     if (dw > 1) {
                         w -= dw;
@@ -838,8 +824,8 @@ void EasyGraphicsItem::paint(QPainter* _painter, const QStyleOptionGraphicsItem*
                     _painter->setFont(EASY_GLOBALS.selected_item_font);
 
                 // drawing text
-                auto name = *itemBlock.tree.node->name() != 0 ? itemBlock.tree.node->name() : itemDesc.name();
-                _painter->drawText(p.rect, flags, ::profiler_gui::toUnicode(name));
+                auto name = easyBlockName(itemBlock.tree, itemDesc);
+                _painter->drawText(p.rect, Qt::AlignCenter, ::profiler_gui::toUnicode(name));
 
                 // restore previous pen color
                 if (p.previousPenStyle == Qt::NoPen)
@@ -896,7 +882,7 @@ void EasyGraphicsItem::paint(QPainter* _painter, const QStyleOptionGraphicsItem*
 
                         if (!p.selectedItemsWasPainted)
                         {
-                            p.brush.setColor(itemDesc.color());// SELECTED_ITEM_COLOR);
+                            p.brush.setColor(QColor::fromRgba(itemDesc.color()));// SELECTED_ITEM_COLOR);
                             _painter->setBrush(p.brush);
                         }
                         else
@@ -945,7 +931,7 @@ void EasyGraphicsItem::paint(QPainter* _painter, const QStyleOptionGraphicsItem*
                             _painter->setFont(EASY_GLOBALS.selected_item_font);
 
                             // drawing text
-                            auto name = *itemBlock.tree.node->name() != 0 ? itemBlock.tree.node->name() : itemDesc.name();
+                            auto name = easyBlockName(itemBlock.tree, itemDesc);
                             _painter->drawText(p.rect, Qt::AlignCenter, ::profiler_gui::toUnicode(name));
                             // END Draw text~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                         }
@@ -964,7 +950,7 @@ void EasyGraphicsItem::paint(QPainter* _painter, const QStyleOptionGraphicsItem*
         const auto sceneView = view();
         auto firstSync = ::std::lower_bound(m_pRoot->sync.begin(), m_pRoot->sync.end(), p.sceneLeft, [&sceneView](::profiler::block_index_t _index, qreal _value)
         {
-            return sceneView->time2position(blocksTree(_index).node->begin()) < _value;
+            return sceneView->time2position(easyBlocksTree(_index).node->begin()) < _value;
         });
 
         if (firstSync != m_pRoot->sync.end())
@@ -979,14 +965,15 @@ void EasyGraphicsItem::paint(QPainter* _painter, const QStyleOptionGraphicsItem*
         //firstSync = m_pRoot->sync.begin();
 
         p.previousColor = 0;
-        qreal prevRight = -1e100, top = y() - 4, h = 3;
-        if (top + h < p.visibleBottom)
+        qreal prevRight = -1e100;
+        const qreal top = y() + 1 - EVENT_HEIGHT;
+        if (top + EVENT_HEIGHT < p.visibleBottom)
         {
             _painter->setPen(BORDERS_COLOR);
 
             for (auto it = firstSync, end = m_pRoot->sync.end(); it != end; ++it)
             {
-                const auto& item = blocksTree(*it);
+                const auto& item = easyBlocksTree(*it);
                 auto left = sceneView->time2position(item.node->begin());
 
                 if (left > p.sceneRight)
@@ -1028,7 +1015,7 @@ void EasyGraphicsItem::paint(QPainter* _painter, const QStyleOptionGraphicsItem*
                     _painter->setBrush(QColor::fromRgb(color));
                 }
 
-                p.rect.setRect(left, top, width, h);
+                p.rect.setRect(left, top, width, EVENT_HEIGHT);
                 _painter->drawRect(p.rect);
                 prevRight = left + width + MIN_SYNC_SPACING;
             }
@@ -1042,7 +1029,7 @@ void EasyGraphicsItem::paint(QPainter* _painter, const QStyleOptionGraphicsItem*
         const auto sceneView = view();
         auto first = ::std::lower_bound(m_pRoot->events.begin(), m_pRoot->events.end(), p.offset, [&sceneView](::profiler::block_index_t _index, qreal _value)
         {
-            return sceneView->time2position(blocksTree(_index).node->begin()) < _value;
+            return sceneView->time2position(easyBlocksTree(_index).node->begin()) < _value;
         });
 
         if (first != m_pRoot->events.end())
@@ -1056,14 +1043,15 @@ void EasyGraphicsItem::paint(QPainter* _painter, const QStyleOptionGraphicsItem*
         }
 
         p.previousColor = 0;
-        qreal prevRight = -1e100, top = y() + boundingRect().height() - 1, h = 3;
-        if (top + h < p.visibleBottom)
+        qreal prevRight = -1e100;
+        const qreal top = y() + boundingRect().height() - 1;
+        if (top + EVENT_HEIGHT < p.visibleBottom)
         {
             _painter->setPen(BORDERS_COLOR);
 
             for (auto it = first, end = m_pRoot->events.end(); it != end; ++it)
             {
-                const auto& item = blocksTree(*it);
+                const auto& item = easyBlocksTree(*it);
                 auto left = sceneView->time2position(item.node->begin());
 
                 if (left > p.sceneRight)
@@ -1076,7 +1064,8 @@ void EasyGraphicsItem::paint(QPainter* _painter, const QStyleOptionGraphicsItem*
                 left *= p.currentScale;
                 left -= p.dx;
                 width *= p.currentScale;
-                if (width < 2) width = 2;
+                if (width < 2)
+                    width = 2;
 
                 if (left + width <= prevRight) // This item is not visible
                     continue;
@@ -1097,7 +1086,7 @@ void EasyGraphicsItem::paint(QPainter* _painter, const QStyleOptionGraphicsItem*
                     _painter->setBrush(QColor::fromRgb(color));
                 }
 
-                p.rect.setRect(left, top, width, h);
+                p.rect.setRect(left, top, width, EVENT_HEIGHT);
                 _painter->drawRect(p.rect);
                 prevRight = left + width + 2;
             }
@@ -1190,7 +1179,7 @@ const ::profiler_gui::EasyBlock* EasyGraphicsItem::intersect(const QPointF& _pos
         return nullptr;
     }
 
-    static const auto OVERLAP = ::profiler_gui::THREADS_ROW_SPACING >> 1;
+    EASY_STATIC_CONSTEXPR auto OVERLAP = (::profiler_gui::THREADS_ROW_SPACING >> 1) + 2;
     const auto bottom = top + m_levels.size() * ::profiler_gui::GRAPHICS_ROW_SIZE_FULL + OVERLAP;
     if (bottom < _pos.y())
     {
@@ -1209,7 +1198,7 @@ const ::profiler_gui::EasyBlock* EasyGraphicsItem::intersect(const QPointF& _pos
             const auto& sceneView = view();
             auto first = ::std::lower_bound(m_pRoot->events.begin(), m_pRoot->events.end(), _pos.x(), [&sceneView](::profiler::block_index_t _index, qreal _value)
             {
-                return sceneView->time2position(blocksTree(_index).node->begin()) < _value;
+                return sceneView->time2position(easyBlocksTree(_index).node->begin()) < _value;
             });
 
             if (first != m_pRoot->events.end())
@@ -1355,14 +1344,13 @@ const ::profiler_gui::EasyBlock* EasyGraphicsItem::intersectEvent(const QPointF&
         return nullptr;
     }
 
-    const auto top = y() - 6;
-
+    const auto top = y() - EVENT_HEIGHT;
     if (top > _pos.y())
     {
         return nullptr;
     }
 
-    const auto bottom = top + 5;
+    const auto bottom = top + EVENT_HEIGHT + 2;
     if (bottom < _pos.y())
     {
         return nullptr;
@@ -1371,7 +1359,7 @@ const ::profiler_gui::EasyBlock* EasyGraphicsItem::intersectEvent(const QPointF&
     const auto sceneView = view();
     auto firstSync = ::std::lower_bound(m_pRoot->sync.begin(), m_pRoot->sync.end(), _pos.x(), [&sceneView](::profiler::block_index_t _index, qreal _value)
     {
-        return sceneView->time2position(blocksTree(_index).node->begin()) < _value;
+        return sceneView->time2position(easyBlocksTree(_index).node->begin()) < _value;
     });
 
     if (firstSync == m_pRoot->sync.end())

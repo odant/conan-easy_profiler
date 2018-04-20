@@ -59,6 +59,7 @@
 #include <QResizeEvent>
 #include <QContextMenuEvent>
 #include <QMenu>
+#include <easy/utility.h>
 #include "easy_graphics_scrollbar.h"
 #include "globals.h"
 
@@ -96,34 +97,26 @@ namespace profiler_gui {
 
 //////////////////////////////////////////////////////////////////////////
 
-const int DEFAULT_TOP = -40;
-const int DEFAULT_HEIGHT = 80;
-const int INDICATOR_SIZE = 6;
-const int INDICATOR_SIZE_x2 = INDICATOR_SIZE << 1;
-const int HIST_COLUMN_MIN_HEIGHT = 2;
-const int WORKER_THREAD_CHECK_INTERVAL = 40;
-const int BOUNDARY_TIMER_INTERVAL = 100;
+EASY_CONSTEXPR int DEFAULT_TOP = -40;
+EASY_CONSTEXPR int DEFAULT_HEIGHT = 80;
+EASY_CONSTEXPR int INDICATOR_SIZE = 6;
+EASY_CONSTEXPR int INDICATOR_SIZE_x2 = INDICATOR_SIZE << 1;
+EASY_CONSTEXPR int HIST_COLUMN_MIN_HEIGHT = 2;
+EASY_CONSTEXPR int WORKER_THREAD_CHECK_INTERVAL = 40;
+EASY_CONSTEXPR int BOUNDARY_TIMER_INTERVAL = 100;
 
 //////////////////////////////////////////////////////////////////////////
 
-inline qreal clamp(qreal _minValue, qreal _value, qreal _maxValue)
-{
-    return (_value < _minValue ? _minValue : (_value > _maxValue ? _maxValue : _value));
-}
-
-inline qreal sqr(qreal _value)
-{
-    return _value * _value;
-}
+using estd::sqr;
 
 inline qreal calculate_color1(qreal h, qreal, qreal k)
 {
-    return ::std::min(h * k, 0.9999999);
+    return std::min(h * k, 0.9999999);
 }
 
 inline qreal calculate_color2(qreal, qreal duration, qreal k)
 {
-    return ::std::min(sqr(sqr(duration)) * k, 0.9999999);
+    return std::min(sqr(sqr(duration)) * k, 0.9999999);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -296,7 +289,7 @@ void EasyHistogramItem::paintBusyIndicator(QPainter* _painter, qreal _current_sc
     const auto width = m_boundingRect.width() * _current_scale;
     const auto h = _painter->fontMetrics().height();
 
-    _painter->setPen(Qt::black);
+    _painter->setPen(::profiler_gui::TEXT_COLOR);
     _painter->drawText(QRectF(0, m_boundingRect.top(), width, m_boundingRect.height() - h),
                        Qt::AlignCenter, "Generating image");
     _painter->drawText(QRectF(0, m_boundingRect.top() + h, width, m_boundingRect.height() - h),
@@ -477,11 +470,11 @@ void EasyHistogramItem::paintByPtr(QPainter* _painter)
         //bottom_width -= fm.width(m_bottomDurationStr) + 7;
         top_width -= fm.width(m_topDurationStr) + 7;
 
-        _painter->setPen(m_topDuration < m_maxDuration ? Qt::darkRed : Qt::black);
+        _painter->setPen(m_topDuration < m_maxDuration ? QColor(Qt::darkRed) : ::profiler_gui::TEXT_COLOR);
         _painter->drawText(rect, Qt::AlignRight | Qt::AlignTop, m_topDurationStr);
 
         rect.setRect(0, bottom, width - 3, font_h);
-        _painter->setPen(m_bottomDuration > m_minDuration ? Qt::darkRed : Qt::black);
+        _painter->setPen(m_bottomDuration > m_minDuration ? QColor(Qt::darkRed) : ::profiler_gui::TEXT_COLOR);
         _painter->drawText(rect, Qt::AlignRight | Qt::AlignTop, m_bottomDurationStr);
     }
 
@@ -507,7 +500,7 @@ void EasyHistogramItem::paintByPtr(QPainter* _painter)
         _painter->drawLine(QLineF(0, h, w, h));
     }
 
-    _painter->setPen(Qt::black);
+    _painter->setPen(::profiler_gui::TEXT_COLOR);
     rect.setRect(0, bottom + 2, width, widget->defaultFontHeight());
     const auto eventsSize = m_pProfilerThread->events.size();
     _painter->drawText(rect, Qt::AlignHCenter | Qt::TextDontClip, QString("%1  |  duration: %2  |  profiled: %3 (%4%)  |  wait: %5 (%6%)  |  %7 frames  |  %8 blocks  |  %9 markers")
@@ -716,12 +709,11 @@ void EasyHistogramItem::paintById(QPainter* _painter)
         //bottom_width -= fm.width(m_bottomDurationStr) + 7;
         top_width -= fm.width(m_topDurationStr) + 7;
 
-        _painter->setPen(Qt::black);
-        _painter->setPen(m_topDuration < m_maxDuration ? Qt::darkRed : Qt::black);
+        _painter->setPen(m_topDuration < m_maxDuration ? QColor(Qt::darkRed) : ::profiler_gui::TEXT_COLOR);
         _painter->drawText(rect, Qt::AlignRight | Qt::AlignTop, m_topDurationStr);
 
         rect.setRect(0, bottom, width - 3, font_h);
-        _painter->setPen(m_bottomDuration > m_minDuration ? Qt::darkRed : Qt::black);
+        _painter->setPen(m_bottomDuration > m_minDuration ? QColor(Qt::darkRed) : ::profiler_gui::TEXT_COLOR);
         _painter->drawText(rect, Qt::AlignRight | Qt::AlignTop, m_bottomDurationStr);
     }
 
@@ -747,7 +739,7 @@ void EasyHistogramItem::paintById(QPainter* _painter)
         _painter->drawLine(QLineF(0, h, w, h));
     }
 
-    _painter->setPen(Qt::black);
+    _painter->setPen(::profiler_gui::TEXT_COLOR);
     rect.setRect(0, bottom + 2, width, widget->defaultFontHeight());
 
     if (!m_selectedBlocks.empty())
@@ -863,7 +855,7 @@ void EasyHistogramItem::setSource(::profiler::thread_id_t _thread_id, const ::pr
                     if (m_bReady.load(::std::memory_order_acquire))
                         return;
 
-                    if (easyDescriptor(easyBlock(item.block).tree.node->id()).type() == ::profiler::BLOCK_TYPE_EVENT)
+                    if (easyDescriptor(easyBlock(item.block).tree.node->id()).type() == ::profiler::BlockType::Event)
                         continue;
 
                     const auto w = item.width();
@@ -1855,6 +1847,7 @@ int EasyGraphicsScrollbar::defaultFontHeight() const
 
 void EasyGraphicsScrollbar::setValue(qreal _value)
 {
+    using estd::clamp;
     m_value = clamp(m_minimumValue, _value, ::std::max(m_minimumValue, m_maximumValue - m_slider->width()));
     m_slider->setX(m_value + m_slider->halfwidth());
     emit valueChanged(m_value);
@@ -1870,14 +1863,15 @@ void EasyGraphicsScrollbar::setRange(qreal _minValue, qreal _maxValue)
 
     m_minimumValue = _minValue;
     m_maximumValue = _maxValue;
-    scene()->setSceneRect(_minValue, DEFAULT_TOP, _maxValue - _minValue, DEFAULT_HEIGHT + m_defaultFontHeight + 4);
+    const auto range = this->range();
+    scene()->setSceneRect(_minValue, DEFAULT_TOP, range, DEFAULT_HEIGHT + m_defaultFontHeight + 4);
 
     m_histogramItem->cancelImageUpdate();
-    m_histogramItem->setBoundingRect(_minValue, DEFAULT_TOP + INDICATOR_SIZE, _maxValue, DEFAULT_HEIGHT - INDICATOR_SIZE_x2);
+    m_histogramItem->setBoundingRect(_minValue, DEFAULT_TOP + INDICATOR_SIZE, range, DEFAULT_HEIGHT - INDICATOR_SIZE_x2);
 
     emit rangeChanged();
 
-    setValue(_minValue + oldValue * range());
+    setValue(_minValue + oldValue * range);
 
     onWindowWidthChange(width());
 

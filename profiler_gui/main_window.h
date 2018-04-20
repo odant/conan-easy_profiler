@@ -60,6 +60,7 @@
 #include <sstream>
 
 #include <QMainWindow>
+#include <QDockWidget>
 #include <QTimer>
 #include <QStringList>
 
@@ -77,8 +78,6 @@
 //////////////////////////////////////////////////////////////////////////
 
 #define EASY_GUI_USE_DESCRIPTORS_DOCK_WINDOW 0
-
-class QDockWidget;
 
 namespace profiler { namespace net { struct EasyProfilerStatus; } }
 
@@ -195,6 +194,14 @@ private:
 
 //////////////////////////////////////////////////////////////////////////
 
+class EasyDockWidget : public QDockWidget
+{
+    Q_OBJECT
+public:
+    explicit EasyDockWidget(const QString& title, QWidget* parent = nullptr);
+    ~EasyDockWidget() override;
+};
+
 class EasyMainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -205,6 +212,7 @@ protected:
     typedef QMainWindow  Parent;
 
     QStringList                            m_lastFiles;
+    QString                                    m_theme;
     QString                              m_lastAddress;
     QDockWidget*                          m_treeWidget = nullptr;
     QDockWidget*                        m_graphicsView = nullptr;
@@ -247,7 +255,7 @@ protected:
 public:
 
     explicit EasyMainWindow();
-    virtual ~EasyMainWindow();
+    ~EasyMainWindow() override;
 
     // Public virtual methods
 
@@ -259,6 +267,7 @@ public:
 
 protected slots:
 
+    void onThemeChange(bool);
     void onOpenFileClicked(bool);
     void onSaveFileClicked(bool);
     void onDeleteClicked(bool);
@@ -315,6 +324,9 @@ private:
     void saveSettingsAndGeometry();
 
     void setDisconnected(bool _showMessage = true);
+
+    void destroyProgressDialog();
+    void createProgressDialog(const QString& text);
 
 }; // END of class EasyMainWindow.
 
