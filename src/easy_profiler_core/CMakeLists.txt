@@ -15,6 +15,10 @@ if (NOT WIN32)
         if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.3")
             set(NO_CXX11_THREAD_LOCAL_SUPPORT TRUE)
         endif ()
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
+        if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "8.0")
+            set(NO_CXX11_THREAD_LOCAL_SUPPORT TRUE)
+        endif ()
     endif ()
     
     # TODO: Check thread_local keyword support for other compilers for Unix
@@ -36,6 +40,7 @@ set(EASY_OPTION_LISTEN                 OFF    CACHE BOOL   "Enable automatic sta
 set(EASY_OPTION_PROFILE_SELF           OFF    CACHE BOOL   "Enable self profiling (measure time for internal storage expand)")
 set(EASY_OPTION_PROFILE_SELF_BLOCKS_ON OFF    CACHE BOOL   "Storage expand default status (profiler::ON or profiler::OFF)")
 set(EASY_OPTION_LOG                    OFF    CACHE BOOL   "Print errors to stderr")
+set(EASY_OPTION_PRETTY_PRINT           OFF    CACHE BOOL   "Use pretty-printed function names with signature and argument types")
 set(EASY_OPTION_PREDEFINED_COLORS      ON     CACHE BOOL   "Use predefined set of colors (see profiler_colors.h). If you want to use your own colors palette you can turn this option OFF")
 set(BUILD_SHARED_LIBS                  ON     CACHE BOOL   "Build easy_profiler as shared library.")
 if (WIN32)
@@ -94,6 +99,7 @@ elseif (NO_CXX11_THREAD_LOCAL_SUPPORT)
     endif ()
 endif ()
 message(STATUS "  Log messages = ${EASY_OPTION_LOG}")
+message(STATUS "  Function names pretty-print = ${EASY_OPTION_PRETTY_PRINT}")
 message(STATUS "  Use EasyProfiler colors palette = ${EASY_OPTION_PREDEFINED_COLORS}")
 message(STATUS "  Shared library: ${BUILD_SHARED_LIBS}")
 message(STATUS "------ END EASY_PROFILER OPTIONS -------")
@@ -128,15 +134,18 @@ set(H_FILES
 )
 
 set(INCLUDE_FILES
+    include/easy/arbitrary_value.h
     include/easy/easy_net.h
     include/easy/easy_socket.h
-    include/easy/easy_compiler_support.h
     include/easy/profiler.h
-    include/easy/profiler_aux.h
-    include/easy/profiler_colors.h
     include/easy/reader.h
     include/easy/serialized_block.h
-    include/easy/profiler_public_types.h
+    include/easy/details/arbitrary_value_aux.h
+    include/easy/details/arbitrary_value_public_types.h
+    include/easy/details/easy_compiler_support.h
+    include/easy/details/profiler_aux.h
+    include/easy/details/profiler_colors.h
+    include/easy/details/profiler_public_types.h
 )
 
 source_group(include FILES ${INCLUDE_FILES})
@@ -161,7 +170,7 @@ target_compile_definitions(easy_profiler PRIVATE
     -D_BUILD_PROFILER=1
     #-DEASY_PROFILER_API_DISABLED # uncomment this to disable profiler api only (you will have to rebuild only easy_profiler)
 )
-if (EASY_OPTION_LIB_STATIC)
+if (NOT BUILD_SHARED_LIBS)
     target_compile_definitions(easy_profiler PUBLIC -DEASY_PROFILER_STATIC=1)
 endif ()
 target_compile_definitions(easy_profiler PUBLIC
@@ -189,6 +198,7 @@ else ()
     easy_define_target_option(easy_profiler EASY_OPTION_REMOVE_EMPTY_UNGUARDED_THREADS EASY_OPTION_REMOVE_EMPTY_UNGUARDED_THREADS)
 endif ()
 easy_define_target_option(easy_profiler EASY_OPTION_LOG EASY_OPTION_LOG_ENABLED)
+easy_define_target_option(easy_profiler EASY_OPTION_PRETTY_PRINT EASY_OPTION_PRETTY_PRINT_FUNCTIONS)
 easy_define_target_option(easy_profiler EASY_OPTION_PREDEFINED_COLORS EASY_OPTION_BUILTIN_COLORS)
 # End adding EasyProfiler options definitions.
 #####################################################################

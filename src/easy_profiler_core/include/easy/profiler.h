@@ -43,7 +43,7 @@ The Apache License, Version 2.0 (the "License");
 #ifndef EASY_PROFILER_H
 #define EASY_PROFILER_H
 
-#include <easy/profiler_public_types.h>
+#include <easy/details/profiler_public_types.h>
 
 #if defined ( __clang__ )
 # pragma clang diagnostic push
@@ -110,7 +110,7 @@ Block will be automatically completed by destructor.
 */
 # define EASY_BLOCK(name, ...)\
     EASY_LOCAL_STATIC_PTR(const ::profiler::BaseBlockDescriptor*, EASY_UNIQUE_DESC(__LINE__), ::profiler::registerDescription(::profiler::extract_enable_flag(__VA_ARGS__),\
-        EASY_UNIQUE_LINE_ID, EASY_COMPILETIME_NAME(name), __FILE__, __LINE__, ::profiler::BLOCK_TYPE_BLOCK, ::profiler::extract_color(__VA_ARGS__),\
+        EASY_UNIQUE_LINE_ID, EASY_COMPILETIME_NAME(name), __FILE__, __LINE__, ::profiler::BlockType::Block, ::profiler::extract_color(__VA_ARGS__),\
         ::std::is_base_of<::profiler::ForceConstStr, decltype(name)>::value));\
     ::profiler::Block EASY_UNIQUE_BLOCK(__LINE__)(EASY_UNIQUE_DESC(__LINE__), EASY_RUNTIME_NAME(name));\
     ::profiler::beginBlock(EASY_UNIQUE_BLOCK(__LINE__));
@@ -148,7 +148,7 @@ Block will be automatically completed by destructor.
 */
 #define EASY_NONSCOPED_BLOCK(name, ...)\
     EASY_LOCAL_STATIC_PTR(const ::profiler::BaseBlockDescriptor*, EASY_UNIQUE_DESC(__LINE__), ::profiler::registerDescription(::profiler::extract_enable_flag(__VA_ARGS__),\
-        EASY_UNIQUE_LINE_ID, EASY_COMPILETIME_NAME(name), __FILE__, __LINE__, ::profiler::BLOCK_TYPE_BLOCK, ::profiler::extract_color(__VA_ARGS__),\
+        EASY_UNIQUE_LINE_ID, EASY_COMPILETIME_NAME(name), __FILE__, __LINE__, ::profiler::BlockType::Block, ::profiler::extract_color(__VA_ARGS__),\
         ::std::is_base_of<::profiler::ForceConstStr, decltype(name)>::value));\
     ::profiler::beginNonScopedBlock(EASY_UNIQUE_DESC(__LINE__), EASY_RUNTIME_NAME(name));
 
@@ -176,11 +176,7 @@ Name of the block automatically created with function name.
 
 \ingroup profiler
 */
-# define EASY_FUNCTION(...)\
-    EASY_LOCAL_STATIC_PTR(const ::profiler::BaseBlockDescriptor*, EASY_UNIQUE_DESC(__LINE__), ::profiler::registerDescription(::profiler::extract_enable_flag(__VA_ARGS__),\
-        EASY_UNIQUE_LINE_ID, __func__, __FILE__, __LINE__, ::profiler::BLOCK_TYPE_BLOCK, ::profiler::extract_color(__VA_ARGS__), false));\
-    ::profiler::Block EASY_UNIQUE_BLOCK(__LINE__)(EASY_UNIQUE_DESC(__LINE__), "");\
-    ::profiler::beginBlock(EASY_UNIQUE_BLOCK(__LINE__)); // this is to avoid compiler warning about unused variable
+# define EASY_FUNCTION(...) EASY_BLOCK(EASY_FUNC_NAME, ## __VA_ARGS__)
 
 /** Macro for completion of last opened block explicitly.
 
@@ -219,7 +215,7 @@ will end previously opened EASY_BLOCK or EASY_FUNCTION.
 # define EASY_EVENT(name, ...)\
     EASY_LOCAL_STATIC_PTR(const ::profiler::BaseBlockDescriptor*, EASY_UNIQUE_DESC(__LINE__), ::profiler::registerDescription(\
         ::profiler::extract_enable_flag(__VA_ARGS__), EASY_UNIQUE_LINE_ID, EASY_COMPILETIME_NAME(name),\
-            __FILE__, __LINE__, ::profiler::BLOCK_TYPE_EVENT, ::profiler::extract_color(__VA_ARGS__),\
+            __FILE__, __LINE__, ::profiler::BlockType::Event, ::profiler::extract_color(__VA_ARGS__),\
             ::std::is_base_of<::profiler::ForceConstStr, decltype(name)>::value));\
     ::profiler::storeEvent(EASY_UNIQUE_DESC(__LINE__), EASY_RUNTIME_NAME(name));
 
@@ -455,14 +451,14 @@ Added for clarification.
 
 namespace profiler {
 
-    const uint16_t DEFAULT_PORT = EASY_DEFAULT_PORT;
+    EASY_CONSTEXPR uint16_t DEFAULT_PORT = EASY_DEFAULT_PORT;
 
     //////////////////////////////////////////////////////////////////////
     // Core API
     // Note: It is better to use macros defined above than a direct calls to API.
     //       But some API functions does not have macro wrappers...
 
-#ifdef BUILD_WITH_EASY_PROFILER
+#ifdef USING_EASY_PROFILER
     extern "C" {
 
         /** Returns current time in ticks.
@@ -867,7 +863,7 @@ namespace profiler {
 
         /** Always returns true.
         */
-        inline bool isMain() {
+        inline EASY_CONSTEXPR_FCN bool isMain() {
             return true;
         }
 

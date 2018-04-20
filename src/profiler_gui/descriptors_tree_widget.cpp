@@ -67,9 +67,12 @@
 #include <QToolBar>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QVariant>
 #include <QTimer>
 #include <thread>
 #include "descriptors_tree_widget.h"
+#include "arbitrary_value_inspector.h"
+#include "treeview_first_column_delegate.h"
 #include "globals.h"
 
 #ifdef _WIN32
@@ -183,7 +186,10 @@ const char* statusText(::profiler::EasyBlockStatus _status)
 
 //////////////////////////////////////////////////////////////////////////
 
-EasyDescWidgetItem::EasyDescWidgetItem(::profiler::block_id_t _desc, Parent* _parent) : Parent(_parent), m_desc(_desc)
+EasyDescWidgetItem::EasyDescWidgetItem(::profiler::block_id_t _desc, Parent* _parent)
+    : Parent(_parent, QTreeWidgetItem::UserType)
+    , m_desc(_desc)
+    , m_type(EasyDescWidgetItem::Type::File)
 {
 
 }
@@ -209,6 +215,35 @@ bool EasyDescWidgetItem::operator < (const Parent& _other) const
     return Parent::operator < (_other);
 }
 
+QVariant EasyDescWidgetItem::data(int _column, int _role) const
+{
+    if (_column == DESC_COL_TYPE)
+    {
+        if (_role == Qt::ToolTipRole)
+        {
+            switch (m_type)
+            {
+                case Type::File:  return QStringLiteral("File");
+                case Type::Event: return QStringLiteral("Event");
+                case Type::Block: return QStringLiteral("Block");
+                case Type::Value: return QStringLiteral("Arbitrary Value");
+            }
+        }
+        else if (_role == Qt::DisplayRole)
+        {
+            switch (m_type)
+            {
+                case Type::File:  return QStringLiteral("F");
+                case Type::Event: return QStringLiteral("E");
+                case Type::Block: return QStringLiteral("B");
+                case Type::Value: return QStringLiteral("V");
+            }
+        }
+    }
+
+    return QTreeWidgetItem::data(_column, _role);
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 EasyDescTreeWidget::EasyDescTreeWidget(QWidget* _parent)
@@ -224,6 +259,7 @@ EasyDescTreeWidget::EasyDescTreeWidget(QWidget* _parent)
     setAnimated(true);
     setSortingEnabled(false);
     setColumnCount(DESC_COL_COLUMNS_NUMBER);
+    setSelectionBehavior(QAbstractItemView::SelectRows);
 
     auto header_item = new QTreeWidgetItem();
     header_item->setText(DESC_COL_FILE_LINE, "File/Line");
@@ -239,6 +275,8 @@ EasyDescTreeWidget::EasyDescTreeWidget(QWidget* _parent)
     connect(this, &Parent::currentItemChanged, this, &This::onCurrentItemChange);
 
     loadSettings();
+
+    setItemDelegateForColumn(0, new EasyTreeViewFirstColumnItemDelegate(this));
 }
 
 EasyDescTreeWidget::~EasyDescTreeWidget()
@@ -254,6 +292,18 @@ EasyDescTreeWidget::~EasyDescTreeWidget()
 
 //////////////////////////////////////////////////////////////////////////
 
+void EasyDescTreeWidget::setSearchColumn(int column)
+{
+    m_searchColumn = column;
+}
+
+int EasyDescTreeWidget::searchColumn() const
+{
+    return m_searchColumn;
+}
+
+//////////////////////////////////////////////////////////////////////////
+
 void EasyDescTreeWidget::contextMenuEvent(QContextMenuEvent* _event)
 {
     _event->accept();
@@ -261,28 +311,12 @@ void EasyDescTreeWidget::contextMenuEvent(QContextMenuEvent* _event)
     QMenu menu;
     menu.setToolTipsVisible(true);
     auto action = menu.addAction("Expand all");
-    action->setIcon(QIcon(":/Expand"));
+    action->setIcon(QIcon(imagePath("expand")));
     connect(action, &QAction::triggered, this, &This::expandAll);
 
     action = menu.addAction("Collapse all");
-    action->setIcon(QIcon(":/Collapse"));
+    action->setIcon(QIcon(imagePath("collapse")));
     connect(action, &QAction::triggered, this, &This::collapseAll);
-
-    menu.addSeparator();
-    auto submenu = menu.addMenu("Search by");
-    auto header_item = headerItem();
-    for (int i = 0; i < DESC_COL_STATUS; ++i)
-    {
-        if (i == DESC_COL_TYPE)
-            continue;
-
-        action = submenu->addAction(header_item->text(i));
-        action->setData(i);
-        action->setCheckable(true);
-        if (i == m_searchColumn)
-            action->setChecked(true);
-        connect(action, &QAction::triggered, this, &This::onSearchColumnChange);
-    }
 
     auto item = currentItem();
     if (item != nullptr && item->parent() != nullptr && currentColumn() >= DESC_COL_TYPE)
@@ -315,13 +349,6 @@ void EasyDescTreeWidget::contextMenuEvent(QContextMenuEvent* _event)
     }
 
     menu.exec(QCursor::pos());
-}
-
-void EasyDescTreeWidget::onSearchColumnChange(bool)
-{
-    auto action = qobject_cast<QAction*>(sender());
-    if (action != nullptr)
-        m_searchColumn = action->data().toInt();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -368,7 +395,7 @@ void EasyDescTreeWidget::clearSilent(bool _global)
 
 struct FileItems
 {
-    typedef ::std::unordered_map<int, EasyDescWidgetItem*, ::profiler::passthrough_hash<int> > Items;
+    using Items = ::std::unordered_map<int, EasyDescWidgetItem*, ::estd::hash<int> >;
     Items children;
     QTreeWidgetItem* item = nullptr;
 };
@@ -393,10 +420,10 @@ void EasyDescTreeWidget::build()
             auto& p = fileItems[desc->file()];
             if (p.item == nullptr)
             {
-                p.item = new QTreeWidgetItem();
-                p.item->setText(DESC_COL_FILE_LINE, QString(desc->file()).remove(QRegExp("^(\\.{2}\\\\+|\\/+)+")));
-                p.item->setText(DESC_COL_TYPE, "F");
-                p.item->setToolTip(DESC_COL_TYPE, "File");
+                auto item = new EasyDescWidgetItem(0);
+                item->setText(DESC_COL_FILE_LINE, QString(desc->file()).remove(QRegExp("^(\\.{2}\\\\+|\\/+)+")));
+                item->setType(EasyDescWidgetItem::Type::File);
+                p.item = item;
             }
 
             auto it = p.children.find(desc->line());
@@ -407,15 +434,19 @@ void EasyDescTreeWidget::build()
                 item->setData(DESC_COL_FILE_LINE, Qt::UserRole, desc->line());
                 item->setText(DESC_COL_NAME, desc->name());
 
-                if (desc->type() == ::profiler::BLOCK_TYPE_BLOCK)
+                switch (desc->type())
                 {
-                    item->setText(DESC_COL_TYPE, "B");
-                    item->setToolTip(DESC_COL_TYPE, "Block");
-                }
-                else
-                {
-                    item->setText(DESC_COL_TYPE, "E");
-                    item->setToolTip(DESC_COL_TYPE, "Event");
+                    case ::profiler::BlockType::Block:
+                        item->setType(EasyDescWidgetItem::Type::Block);
+                        break;
+
+                    case ::profiler::BlockType::Event:
+                        item->setType(EasyDescWidgetItem::Type::Event);
+                        break;
+
+                    case ::profiler::BlockType::Value:
+                        item->setType(EasyDescWidgetItem::Type::Value);
+                        break;
                 }
 
                 item->setFont(DESC_COL_STATUS, f);
@@ -564,9 +595,12 @@ void EasyDescTreeWidget::resizeColumnsToContents()
 void EasyDescTreeWidget::onSelectedBlockChange(uint32_t _block_index)
 {
     if (::profiler_gui::is_max(_block_index))
+    {
+        setCurrentItem(nullptr);
         return;
+    }
 
-    auto item = m_items[blocksTree(_block_index).node->id()];
+    auto item = m_items[easyBlocksTree(_block_index).node->id()];
     if (item == nullptr)
         return;
 
@@ -732,6 +766,7 @@ int EasyDescTreeWidget::findPrev(const QString& _str, Qt::MatchFlags _flags)
 
 EasyDescWidget::EasyDescWidget(QWidget* _parent) : Parent(_parent)
     , m_tree(new EasyDescTreeWidget(this))
+    , m_values(new EasyArbitraryValuesWidget(this))
     , m_searchBox(new QLineEdit(this))
     , m_foundNumber(new QLabel("Found 0 matches", this))
     , m_searchButton(nullptr)
@@ -739,22 +774,22 @@ EasyDescWidget::EasyDescWidget(QWidget* _parent) : Parent(_parent)
 {
     loadSettings();
 
-    m_searchBox->setFixedWidth(200);
+    m_searchBox->setFixedWidth(300);
     m_searchBox->setContentsMargins(5, 0, 0, 0);
 
     auto tb = new QToolBar(this);
     tb->setIconSize(::profiler_gui::ICONS_SIZE);
-    auto refreshButton = tb->addAction(QIcon(":/Reload"), tr("Refresh blocks list"));
+    auto refreshButton = tb->addAction(QIcon(imagePath("reload")), tr("Refresh blocks list"));
     refreshButton->setEnabled(EASY_GLOBALS.connected);
     refreshButton->setToolTip(tr("Refresh blocks list.\nConnection needed."));
     connect(refreshButton, &QAction::triggered, &EASY_GLOBALS.events, &::profiler_gui::EasyGlobalSignals::blocksRefreshRequired);
 
 
 
-    QMenu* menu = new QMenu(this);
+    auto menu = new QMenu(this);
     m_searchButton = menu->menuAction();
     m_searchButton->setText("Find next");
-    m_searchButton->setIcon(QIcon(":/Search-next"));
+    m_searchButton->setIcon(QIcon(imagePath("find-next")));
     m_searchButton->setData(true);
     connect(m_searchButton, &QAction::triggered, this, &This::findNext);
 
@@ -772,12 +807,30 @@ EasyDescWidget::EasyDescWidget(QWidget* _parent) : Parent(_parent)
     connect(a, &QAction::triggered, this, &This::findPrevFromMenu);
     menu->addAction(a);
 
-    menu->addSeparator();
     a = menu->addAction("Case sensitive");
     a->setCheckable(true);
     a->setChecked(m_bCaseSensitiveSearch);
     connect(a, &QAction::triggered, [this](bool _checked){ m_bCaseSensitiveSearch = _checked; });
     menu->addAction(a);
+
+    menu->addSeparator();
+    auto headerItem = m_tree->headerItem();
+    actionGroup = new QActionGroup(this);
+    actionGroup->setExclusive(true);
+    for (int i = 0; i < DESC_COL_STATUS; ++i)
+    {
+        if (i == DESC_COL_TYPE)
+            continue;
+
+        a = new QAction(QStringLiteral("Search by ") + headerItem->text(i), actionGroup);
+        a->setData(i);
+        a->setCheckable(true);
+        if (i == m_tree->searchColumn())
+            a->setChecked(true);
+        connect(a, &QAction::triggered, this, &This::onSearchColumnChange);
+
+        menu->addAction(a);
+    }
 
     tb->addSeparator();
     tb->addAction(m_searchButton);
@@ -793,6 +846,7 @@ EasyDescWidget::EasyDescWidget(QWidget* _parent) : Parent(_parent)
     lay->setContentsMargins(1, 1, 1, 1);
     lay->addLayout(searchbox);
     lay->addWidget(m_tree);
+    lay->addWidget(m_values);
 
     connect(m_searchBox, &QLineEdit::returnPressed, this, &This::onSeachBoxReturnPressed);
     connect(&EASY_GLOBALS.events, &::profiler_gui::EasyGlobalSignals::connectionChanged, refreshButton, &QAction::setEnabled);
@@ -846,12 +900,14 @@ void EasyDescWidget::build()
     m_tree->clearSilent(false);
     m_foundNumber->setText(QString("Found 0 matches"));
     m_tree->build();
+    m_values->rebuild();
 }
 
 void EasyDescWidget::clear()
 {
     m_tree->clearSilent(true);
     m_foundNumber->setText(QString("Found 0 matches"));
+    m_values->clear();
 }
 
 void EasyDescWidget::onSeachBoxReturnPressed()
@@ -860,6 +916,13 @@ void EasyDescWidget::onSeachBoxReturnPressed()
         findNext(true);
     else
         findPrev(true);
+}
+
+void EasyDescWidget::onSearchColumnChange(bool)
+{
+    auto action = qobject_cast<QAction*>(sender());
+    if (action != nullptr)
+        m_tree->setSearchColumn(action->data().toInt());
 }
 
 void EasyDescWidget::findNext(bool)
@@ -891,7 +954,7 @@ void EasyDescWidget::findNextFromMenu(bool _checked)
     {
         m_searchButton->setData(true);
         m_searchButton->setText(tr("Find next"));
-        m_searchButton->setIcon(QIcon(":/Search-next"));
+        m_searchButton->setIcon(QIcon(imagePath("find-next")));
         disconnect(m_searchButton, &QAction::triggered, this, &This::findPrev);
         connect(m_searchButton, &QAction::triggered, this, &This::findNext);
     }
@@ -908,7 +971,7 @@ void EasyDescWidget::findPrevFromMenu(bool _checked)
     {
         m_searchButton->setData(false);
         m_searchButton->setText(tr("Find prev"));
-        m_searchButton->setIcon(QIcon(":/Search-prev"));
+        m_searchButton->setIcon(QIcon(imagePath("find-prev")));
         disconnect(m_searchButton, &QAction::triggered, this, &This::findNext);
         connect(m_searchButton, &QAction::triggered, this, &This::findPrev);
     }

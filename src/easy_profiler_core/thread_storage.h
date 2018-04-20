@@ -43,7 +43,9 @@ The Apache License, Version 2.0 (the "License");
 #ifndef EASY_PROFILER_THREAD_STORAGE_H
 #define EASY_PROFILER_THREAD_STORAGE_H
 
-#include <easy/profiler.h>
+#include <easy/details/profiler_public_types.h>
+#include <easy/details/arbitrary_value_public_types.h>
+#include <easy/serialized_block.h>
 #include <vector>
 #include <string>
 #include <atomic>
@@ -82,8 +84,8 @@ class CSwitchBlock : public profiler::CSwitchEvent
 
 public:
 
-    CSwitchBlock(profiler::timestamp_t _begin_time, profiler::thread_id_t _tid, const char* _runtimeName);
-    inline const char* name() const { return m_name; }
+    CSwitchBlock(profiler::timestamp_t _begin_time, profiler::thread_id_t _tid, const char* _runtimeName) EASY_NOEXCEPT;
+    inline const char* name() const EASY_NOEXCEPT { return m_name; }
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -91,7 +93,7 @@ public:
 const uint16_t SIZEOF_BLOCK = sizeof(profiler::BaseBlockData) + 1 + sizeof(uint16_t); // SerializedBlock stores BaseBlockData + at least 1 character for name ('\0') + 2 bytes for size of serialized data
 const uint16_t SIZEOF_CSWITCH = sizeof(profiler::CSwitchEvent) + 1 + sizeof(uint16_t); // SerializedCSwitch also stores additional 4 bytes to be able to save 64-bit thread_id
 
-struct ThreadStorage
+struct ThreadStorage EASY_FINAL
 {
     StackBuffer<NonscopedBlock>                                                 nonscopedBlocks;
     BlocksList<std::reference_wrapper<profiler::Block>, SIZEOF_BLOCK * (uint16_t)128U>   blocks;
@@ -109,6 +111,7 @@ struct ThreadStorage
     bool                     frameOpened; ///< Is new frame opened (this does not depend on profiling status) \sa profiledFrameOpened
     bool                            halt; ///< This is set to true when new frame started while dumping blocks. Used to restrict collecting blocks during dumping process.
 
+    void storeValue(profiler::timestamp_t _timestamp, profiler::block_id_t _id, profiler::DataType _type, const void* _data, size_t _size, bool _isArray, profiler::ValueId _vin);
     void storeBlock(const profiler::Block& _block);
     void storeCSwitch(const CSwitchBlock& _block);
     void clearClosed();

@@ -57,21 +57,35 @@
 #define EASY_DESCRIPTORS_WIDGET_H
 
 #include <QTreeWidget>
+#include <QStyledItemDelegate>
 #include <QString>
 
 #include <vector>
 #include <unordered_set>
 
-#include <easy/profiler.h>
+#include <easy/details/profiler_public_types.h>
 
 //////////////////////////////////////////////////////////////////////////
 
 class EasyDescWidgetItem : public QTreeWidgetItem
 {
-    typedef QTreeWidgetItem    Parent;
-    typedef EasyDescWidgetItem   This;
+    using Parent = QTreeWidgetItem;
+    using This = EasyDescWidgetItem;
+
+public:
+
+    enum class Type : uint8_t
+    {
+        File,
+        Event,
+        Block,
+        Value
+    };
+
+private:
 
     ::profiler::block_id_t m_desc;
+    Type m_type;
 
 public:
 
@@ -79,6 +93,7 @@ public:
     virtual ~EasyDescWidgetItem();
 
     bool operator < (const Parent& _other) const override;
+    QVariant data(int _column, int _role) const override;
 
 public:
 
@@ -87,6 +102,11 @@ public:
     inline ::profiler::block_id_t desc() const
     {
         return m_desc;
+    }
+
+    inline void setType(Type _type)
+    {
+        m_type = _type;
     }
 
 }; // END of class EasyDescWidgetItem.
@@ -129,6 +149,8 @@ public:
 
     int findNext(const QString& _str, Qt::MatchFlags _flags);
     int findPrev(const QString& _str, Qt::MatchFlags _flags);
+    void setSearchColumn(int column);
+    int searchColumn() const;
 
 public slots:
 
@@ -137,7 +159,6 @@ public slots:
 
 private slots:
 
-    void onSearchColumnChange(bool);
     void onBlockStatusChangeClicked(bool);
     void onCurrentItemChange(QTreeWidgetItem* _item, QTreeWidgetItem* _prev);
     void onItemExpand(QTreeWidgetItem* _item);
@@ -168,6 +189,7 @@ class EasyDescWidget : public QWidget
 private:
 
     EasyDescTreeWidget*    m_tree;
+    class EasyArbitraryValuesWidget* m_values;
     class QLineEdit*  m_searchBox;
     class QLabel*   m_foundNumber;
     class QAction* m_searchButton;
@@ -196,6 +218,7 @@ private slots:
     void findPrev(bool);
     void findNextFromMenu(bool);
     void findPrevFromMenu(bool);
+    void onSearchColumnChange(bool);
 
 private:
 

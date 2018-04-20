@@ -43,8 +43,13 @@ The Apache License, Version 2.0 (the "License");
 #ifndef EASY_PROFILER_MANAGER_H
 #define EASY_PROFILER_MANAGER_H
 
-#include <easy/profiler.h>
-#include <easy/easy_socket.h>
+#include <easy/details/profiler_public_types.h>
+
+#ifdef _WIN32
+// Do not move this include to other place!
+// It should be included before Windows.h which is included in spin_lock.h
+# include <easy/easy_socket.h>
+#endif // _WIN32
 
 #include "spin_lock.h"
 #include "outstream.h"
@@ -64,15 +69,15 @@ typedef uint64_t processid_t;
 
 class BlockDescriptor;
 
+namespace profiler { class ValueId; }
+
 class ProfileManager
 {
-#ifndef EASY_MAGIC_STATIC_CPP11
+#ifndef EASY_MAGIC_STATIC_AVAILABLE
     friend class ProfileManagerInstance;
 #endif
 
     ProfileManager();
-    ProfileManager(const ProfileManager& p) = delete;
-    ProfileManager& operator=(const ProfileManager&) = delete;
 
     typedef profiler::guard_lock<profiler::spin_lock> guard_lock_t;
     typedef std::map<profiler::thread_id_t, ThreadStorage> map_of_threads_stacks;
@@ -104,10 +109,11 @@ class ProfileManager
     std::atomic_bool             m_isAlreadyListening;
     std::atomic_bool                  m_frameMaxReset;
     std::atomic_bool                  m_frameAvgReset;
+    std::atomic_bool                    m_stopDumping;
 
     std::string m_csInfoFilename = "/tmp/cs_profiling_info.log";
 
-    uint32_t dumpBlocksToStream(profiler::OStream& _outputStream, bool _lockSpin);
+    uint32_t dumpBlocksToStream(profiler::OStream& _outputStream, bool _lockSpin, bool _async);
     void setBlockStatus(profiler::block_id_t _id, profiler::EasyBlockStatus _status);
 
     std::thread m_listenThread;
@@ -116,6 +122,11 @@ class ProfileManager
     std::atomic_bool m_stopListen;
 
 public:
+
+    ProfileManager(const ProfileManager&)              = delete;
+    ProfileManager(ProfileManager&&)                   = delete;
+    ProfileManager& operator = (const ProfileManager&) = delete;
+    ProfileManager& operator = (ProfileManager&&)      = delete;
 
     static ProfileManager& instance();
     ~ProfileManager();
@@ -129,6 +140,7 @@ public:
                                                             profiler::color_t _color,
                                                             bool _copyName = false);
 
+    void storeValue(const profiler::BaseBlockDescriptor* _desc, profiler::DataType _type, const void* _data, size_t _size, bool _isArray, profiler::ValueId _vin);
     bool storeBlock(const profiler::BaseBlockDescriptor* _desc, const char* _runtimeName);
     bool storeBlock(const profiler::BaseBlockDescriptor* _desc, const char* _runtimeName, profiler::timestamp_t _beginTime, profiler::timestamp_t _endTime);
     void beginBlock(profiler::Block& _block);

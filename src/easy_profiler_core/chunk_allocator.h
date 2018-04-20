@@ -43,7 +43,7 @@ The Apache License, Version 2.0 (the "License");
 #ifndef EASY_PROFILER_CHUNK_ALLOCATOR_H
 #define EASY_PROFILER_CHUNK_ALLOCATOR_H
 
-#include <easy/easy_compiler_support.h>
+#include <easy/details/easy_compiler_support.h>
 #include <cstring>
 #include <cstddef>
 #include <stdint.h>
@@ -64,6 +64,8 @@ The Apache License, Version 2.0 (the "License");
 # define EASY_MALLOC(MEMSIZE, A) malloc(MEMSIZE)
 # define EASY_FREE(MEMPTR) free(MEMPTR)
 #else
+// MSVC and GNUC aligned versions of malloc are defined in malloc.h
+# include <malloc.h>
 # if defined(_MSC_VER)
 #  define EASY_ALIGNED(TYPE, VAR, A) __declspec(align(A)) TYPE VAR
 #  define EASY_MALLOC(MEMSIZE, A) _aligned_malloc(MEMSIZE, A)
