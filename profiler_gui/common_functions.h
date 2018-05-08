@@ -12,7 +12,7 @@
 *                   : *
 * ----------------- :
 * license           : Lightweight profiler library for c++
-*                   : Copyright(C) 2016-2017  Sergey Yagovtsev, Victor Zarubkin
+*                   : Copyright(C) 2016-2018  Sergey Yagovtsev, Victor Zarubkin
 *                   :
 *                   : Licensed under either of
 *                   :     * MIT license (LICENSE.MIT or http://opensource.org/licenses/MIT)
@@ -128,12 +128,23 @@ void set_max(T& _value) {
 
 //////////////////////////////////////////////////////////////////////////
 
+inline EASY_CONSTEXPR_FCN QRgb alpha(::profiler::color_t _color) {
+    return (_color & 0xff000000) >> 24;
+}
+
 inline EASY_CONSTEXPR_FCN QRgb toRgb(uint32_t _red, uint32_t _green, uint32_t _blue) {
     return (_red << 16) + (_green << 8) + _blue;
 }
 
 inline EASY_CONSTEXPR_FCN QRgb fromProfilerRgb(uint32_t _red, uint32_t _green, uint32_t _blue) {
     return _red == 0 && _green == 0 && _blue == 0 ? ::profiler::colors::Default : toRgb(_red, _green, _blue) | 0x00141414;
+}
+
+inline QRgb darken(::profiler::color_t _color, float _part) {
+    const uint32_t r = (_color & 0x00ff0000) >> 16;
+    const uint32_t g = (_color & 0x0000ff00) >> 8;
+    const uint32_t b = _color & 0x000000ff;
+    return (_color & 0xff000000) | toRgb(r - static_cast<uint32_t>(r * _part), g - static_cast<uint32_t>(g * _part), b - static_cast<uint32_t>(b * _part));
 }
 
 EASY_FORCE_INLINE EASY_CONSTEXPR_FCN qreal colorSum(::profiler::color_t _color) {
@@ -193,6 +204,9 @@ inline QFont EFont(const char* _family, int _size, int _weight = -1) {
 QString valueTypeString(::profiler::DataType _dataType);
 QString valueTypeString(const ::profiler::ArbitraryValue& _serializedValue);
 QString valueString(const ::profiler::ArbitraryValue& _serializedValue);
+QString shortValueString(const ::profiler::ArbitraryValue& _serializedValue);
+QString valueString(const ::profiler::ArbitraryValue& _serializedValue, int _index);
+int valueArraySize(const ::profiler::ArbitraryValue& _serializedValue);
 double value2real(const ::profiler::ArbitraryValue& _serializedValue, int _index = 0);
 
 //////////////////////////////////////////////////////////////////////////

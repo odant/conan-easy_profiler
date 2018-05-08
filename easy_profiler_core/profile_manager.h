@@ -1,6 +1,6 @@
 /**
 Lightweight profiler library for c++
-Copyright(C) 2016-2017  Sergey Yagovtsev, Victor Zarubkin
+Copyright(C) 2016-2018  Sergey Yagovtsev, Victor Zarubkin
 
 Licensed under either of
     * MIT license (LICENSE.MIT or http://opensource.org/licenses/MIT)
@@ -65,7 +65,7 @@ The Apache License, Version 2.0 (the "License");
 
 //////////////////////////////////////////////////////////////////////////
 
-typedef uint64_t processid_t;
+using processid_t = uint64_t;
 
 class BlockDescriptor;
 
@@ -79,14 +79,15 @@ class ProfileManager
 
     ProfileManager();
 
-    typedef profiler::guard_lock<profiler::spin_lock> guard_lock_t;
-    typedef std::map<profiler::thread_id_t, ThreadStorage> map_of_threads_stacks;
-    typedef std::vector<BlockDescriptor*> block_descriptors_t;
+    using atomic_timestamp_t = std::atomic<profiler::timestamp_t>;
+    using guard_lock_t = profiler::guard_lock<profiler::spin_lock>;
+    using map_of_threads_stacks = std::map<profiler::thread_id_t, ThreadStorage>;
+    using block_descriptors_t = std::vector<BlockDescriptor*>;
 
 #ifdef EASY_PROFILER_HASHED_CSTR_DEFINED
-    typedef std::unordered_map<profiler::hashed_cstr, profiler::block_id_t> descriptors_map_t;
+    using descriptors_map_t = std::unordered_map<profiler::hashed_cstr, profiler::block_id_t>;
 #else
-    typedef std::unordered_map<profiler::hashed_stdstring, profiler::block_id_t> descriptors_map_t;
+    using descriptors_map_t = std::unordered_map<profiler::hashed_stdstring, profiler::block_id_t>;
 #endif
 
     const processid_t                     m_processId;
@@ -94,17 +95,17 @@ class ProfileManager
     map_of_threads_stacks                   m_threads;
     block_descriptors_t                 m_descriptors;
     descriptors_map_t                m_descriptorsMap;
-    uint64_t                         m_usedMemorySize;
+    uint64_t                  m_descriptorsMemorySize;
     profiler::timestamp_t                 m_beginTime;
     profiler::timestamp_t                   m_endTime;
-    std::atomic<profiler::timestamp_t>     m_frameMax;
-    std::atomic<profiler::timestamp_t>     m_frameAvg;
-    std::atomic<profiler::timestamp_t>     m_frameCur;
+    atomic_timestamp_t                     m_frameMax;
+    atomic_timestamp_t                     m_frameAvg;
+    atomic_timestamp_t                     m_frameCur;
     profiler::spin_lock                        m_spin;
     profiler::spin_lock                  m_storedSpin;
     profiler::spin_lock                    m_dumpSpin;
     std::atomic<profiler::thread_id_t> m_mainThreadId;
-    std::atomic<char>                m_profilerStatus;
+    std::atomic_bool                 m_profilerStatus;
     std::atomic_bool          m_isEventTracingEnabled;
     std::atomic_bool             m_isAlreadyListening;
     std::atomic_bool                  m_frameMaxReset;
@@ -140,7 +141,7 @@ public:
                                                             profiler::color_t _color,
                                                             bool _copyName = false);
 
-    void storeValue(const profiler::BaseBlockDescriptor* _desc, profiler::DataType _type, const void* _data, size_t _size, bool _isArray, profiler::ValueId _vin);
+    void storeValue(const profiler::BaseBlockDescriptor* _desc, profiler::DataType _type, const void* _data, uint16_t _size, bool _isArray, profiler::ValueId _vin);
     bool storeBlock(const profiler::BaseBlockDescriptor* _desc, const char* _runtimeName);
     bool storeBlock(const profiler::BaseBlockDescriptor* _desc, const char* _runtimeName, profiler::timestamp_t _beginTime, profiler::timestamp_t _endTime);
     void beginBlock(profiler::Block& _block);
@@ -149,8 +150,12 @@ public:
     profiler::timestamp_t maxFrameDuration();
     profiler::timestamp_t avgFrameDuration();
     profiler::timestamp_t curFrameDuration() const;
+
     void setEnabled(bool isEnable);
-    bool isEnabled() const;
+    EASY_FORCE_INLINE bool isEnabled() const {
+        return m_profilerStatus.load(std::memory_order_acquire);
+    }
+
     void setEventTracingEnabled(bool _isEnable);
     bool isEventTracingEnabled() const;
     uint32_t dumpBlocksToFile(const char* filename);
@@ -187,7 +192,6 @@ private:
 
     void storeBlockForce(const profiler::BaseBlockDescriptor* _desc, const char* _runtimeName, ::profiler::timestamp_t& _timestamp);
     void storeBlockForce2(const profiler::BaseBlockDescriptor* _desc, const char* _runtimeName, ::profiler::timestamp_t _timestamp);
-    void storeBlockForce2(ThreadStorage& _registeredThread, const profiler::BaseBlockDescriptor* _desc, const char* _runtimeName, ::profiler::timestamp_t _timestamp);
 
     ThreadStorage& _threadStorage(profiler::thread_id_t _thread_id);
     ThreadStorage* _findThreadStorage(profiler::thread_id_t _thread_id);

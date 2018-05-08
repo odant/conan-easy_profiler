@@ -12,7 +12,7 @@
 *                   : *
 * ----------------- :
 * license           : Lightweight profiler library for c++
-*                   : Copyright(C) 2016-2017  Sergey Yagovtsev, Victor Zarubkin
+*                   : Copyright(C) 2016-2018  Sergey Yagovtsev, Victor Zarubkin
 *                   :
 *                   : Licensed under either of
 *                   :     * MIT license (LICENSE.MIT or http://opensource.org/licenses/MIT)
@@ -58,8 +58,6 @@
 #include <QWidget>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
-#include <QGraphicsItem>
-#include <QGraphicsView>
 #include <QTimer>
 #include <QPointF>
 #include <QList>
@@ -67,17 +65,40 @@
 #include <easy/reader.h>
 #include <easy/utility.h>
 #include <unordered_map>
+#include <map>
 #include <vector>
 #include <string>
-#include <thread>
+#include <functional>
 #include <atomic>
 #include <memory>
+#include "graphics_slider_area.h"
+#include "thread_pool_task.h"
 
 //////////////////////////////////////////////////////////////////////////
 
 using Points = std::vector<QPointF>;
 using ArbitraryValues = std::vector<const profiler::ArbitraryValue*>;
-using ArbitraryValuesMap = std::unordered_map<profiler::thread_id_t, ArbitraryValues, estd::hash<profiler::thread_id_t> >;
+using Durations = std::vector<profiler::timestamp_t>;
+using ComplexityValuesMap = std::map<double, Durations>;
+
+enum class ChartType : uint8_t
+{
+    Regular = 0, ///< Regular chart; X axis = time,  Y axis = value
+    Complexity   ///< Complexity chart; X axis = value, Y axis = duration
+};
+
+enum class FilterType : uint8_t
+{
+    None = 0,
+    Gauss,
+    Median,
+};
+
+enum class ChartPenStyle : uint8_t
+{
+    Line = 0,
+    Points
+};
 
 class ArbitraryValuesCollection EASY_FINAL
 {
@@ -90,209 +111,297 @@ private:
 
     using This = ArbitraryValuesCollection;
 
-    ArbitraryValuesMap          m_values;
-    Points                      m_points;
-    std::thread        m_collectorThread;
-    profiler::timestamp_t    m_beginTime;
-    qreal                     m_minValue;
-    qreal                     m_maxValue;
-    std::atomic<uint8_t>        m_status;
-    std::atomic_bool        m_bInterrupt;
-    uint8_t                    m_jobType;
+    ArbitraryValues            m_values;
+    ComplexityValuesMap m_complexityMap;
+    Points                     m_points;
+    ThreadPoolTask             m_worker;
+    profiler::timestamp_t   m_beginTime;
+    profiler::timestamp_t m_minDuration;
+    profiler::timestamp_t m_maxDuration;
+    qreal                    m_minValue;
+    qreal                    m_maxValue;
+    std::atomic<uint8_t>       m_status;
+    std::atomic_bool       m_bInterrupt;
+    ChartType               m_chartType;
+    uint8_t                   m_jobType;
 
 public:
 
     explicit ArbitraryValuesCollection();
     ~ArbitraryValuesCollection();
 
-    const ArbitraryValuesMap& valuesMap() const;
+    ChartType chartType() const;
+    const ArbitraryValues& values() const;
+    const ComplexityValuesMap& complexityMap() const;
     const Points& points() const;
     JobStatus status() const;
-    size_t size() const;
+
+    profiler::timestamp_t minDuration() const;
+    profiler::timestamp_t maxDuration() const;
 
     qreal minValue() const;
     qreal maxValue() const;
 
-    void collectValues(profiler::thread_id_t _threadId, profiler::vin_t _valueId, const char* _valueName);
-    void collectValues(profiler::thread_id_t _threadId, profiler::vin_t _valueId, const char* _valueName, profiler::timestamp_t _beginTime);
+    void collectValues(ChartType _chartType, profiler::thread_id_t _threadId, profiler::vin_t _valueId
+        , const char* _valueName, profiler::block_id_t _parentBlockId, int _index = -1);
+
     bool calculatePoints(profiler::timestamp_t _beginTime);
+
+    void collectValuesAndPoints(ChartType _chartType, profiler::thread_id_t _threadId, profiler::vin_t _valueId
+        , const char* _valueName, profiler::timestamp_t _beginTime, profiler::block_id_t _parentBlockId
+        , int _index = -1);
+
     void interrupt();
 
 private:
 
     void setStatus(JobStatus _status);
-    void collectById(profiler::thread_id_t _threadId, profiler::vin_t _valueId);
-    void collectByName(profiler::thread_id_t _threadId, const std::string _valueName);
-    bool collectByIdForThread(const profiler::BlocksTreeRoot& _threadRoot, profiler::vin_t _valueId, bool _calculatePoints);
-    bool collectByNameForThread(const profiler::BlocksTreeRoot& _threadRoot, const std::string& _valueName, bool _calculatePoints);
 
-    QPointF point(const profiler::ArbitraryValue& _value) const;
+    void collectById(profiler::thread_id_t _threadId, profiler::vin_t _valueId
+        , profiler::block_id_t _parentBlockId, int _index);
+
+    void collectByName(profiler::thread_id_t _threadId, const std::string _valueName
+        , profiler::block_id_t _parentBlockId, int _index);
+
+    bool collectByIdForThread(const profiler::BlocksTreeRoot& _threadRoot, profiler::vin_t _valueId
+        , bool _calculatePoints, profiler::block_id_t _parentBlockId, int _index);
+
+    bool collectByNameForThread(const profiler::BlocksTreeRoot& _threadRoot, const std::string& _valueName
+        , bool _calculatePoints, profiler::block_id_t _parentBlockId, int _index);
+
+    bool depthFirstSearch(const profiler::BlocksTreeRoot& _threadRoot, bool _calculatePoints
+        , profiler::block_id_t _parentBlockId, int _index
+        , std::function<bool(profiler::vin_t, const char*)> _isSuitableValue);
+
+    double addPoint(const profiler::ArbitraryValue& _value, int _index);
+    QPointF point(const profiler::ArbitraryValue& _value, int _index) const;
 
 }; // end of class ArbitraryValuesCollection.
 
-enum class ChartType : uint8_t
-{
-    Line = 0,
-    Points
-};
-
-struct EasyCollectionPaintData EASY_FINAL
+struct CollectionPaintData EASY_FINAL
 {
     const ArbitraryValuesCollection* ptr;
     QRgb                           color;
-    ChartType                  chartType;
+    ChartPenStyle          chartPenStyle;
     bool                        selected;
 };
 
-using Collections = std::vector<EasyCollectionPaintData>;
+using Collections = std::vector<CollectionPaintData>;
 
 //////////////////////////////////////////////////////////////////////////
 
-class EasyArbitraryValuesChartItem : public QGraphicsItem
+class ArbitraryValuesChartItem : public GraphicsImageItem
 {
-    using Parent = QGraphicsItem;
-    using This = EasyArbitraryValuesChartItem;
+    using Parent = GraphicsImageItem;
+    using This = ArbitraryValuesChartItem;
 
-    Collections m_collections;
-    QRectF     m_boundingRect;
+    Collections                 m_collections;
+    qreal                    m_workerMaxValue;
+    qreal                    m_workerMinValue;
+    profiler::timestamp_t m_workerMaxDuration;
+    profiler::timestamp_t m_workerMinDuration;
+    profiler::timestamp_t       m_maxDuration;
+    profiler::timestamp_t       m_minDuration;
+    int                    m_filterWindowSize;
+    ChartType                     m_chartType;
+    FilterType                   m_filterType;
 
 public:
 
-    explicit EasyArbitraryValuesChartItem();
-    ~EasyArbitraryValuesChartItem() override;
+    explicit ArbitraryValuesChartItem();
+    ~ArbitraryValuesChartItem() override;
 
-    void paint(QPainter* _painter, const QStyleOptionGraphicsItem* _option, QWidget* _widget = nullptr) override;
+    void paint(QPainter* _painter, const QStyleOptionGraphicsItem* _option, QWidget* _widget) override;
 
-    QRectF boundingRect() const override;
-    void setBoundingRect(const QRectF& _rect);
-    void setBoundingRect(qreal _left, qreal _top, qreal _width, qreal _height);
+    bool updateImage() override;
 
+protected:
+
+    void onImageUpdated() override;
+
+public:
+
+    void clear();
     void update(Collections _collections);
     void update(const ArbitraryValuesCollection* _selected);
+    void setChartType(ChartType _chartType);
+    void setFilterType(FilterType _filterType);
+    void setFilterWindowSize(int _size);
 
-}; // end of class EasyArbitraryValuesChartItem.
+    ChartType chartType() const;
+    FilterType filterType() const;
+    int filterWindowSize() const;
 
-class EasyGraphicsChart : public QGraphicsView
+private:
+
+    void paintMouseIndicator(QPainter* _painter, qreal _top, qreal _bottom, qreal _width, qreal _height, int _font_h,
+                             qreal _visibleRegionLeft, qreal _visibleRegionWidth);
+
+    void updateRegularImageAsync(QRectF _boundingRect, qreal _current_scale, qreal _minimum, qreal _maximum
+        , qreal _range, qreal _value, qreal _width, bool _bindMode, profiler::timestamp_t _begin_time, bool _autoAdjust);
+
+    void updateComplexityImageAsync(QRectF _boundingRect, qreal _current_scale, qreal _minimum, qreal _maximum
+        , qreal _range, qreal _value, qreal _width, bool _bindMode, profiler::timestamp_t _begin_time, bool _autoAdjust);
+
+    void drawGrid(QPainter& _painter, int _width, int _height) const;
+
+}; // end of class ArbitraryValuesChartItem.
+
+class GraphicsChart : public GraphicsSliderArea
 {
     Q_OBJECT
 
 private:
 
-    using Parent = QGraphicsView;
-    using This = EasyGraphicsChart;
+    using Parent = GraphicsSliderArea;
+    using This = GraphicsChart;
 
-    EasyArbitraryValuesChartItem* m_chartItem;
-    qreal               m_left;
-    qreal              m_right;
-    qreal             m_offset;
-    qreal             m_xscale;
-    qreal m_visibleRegionWidth;
-    bool           m_bBindMode;
+    ArbitraryValuesChartItem* m_chartItem;
 
 public:
 
-    explicit EasyGraphicsChart(QWidget* _parent = nullptr);
-    ~EasyGraphicsChart() override;
+    explicit GraphicsChart(QWidget* _parent = nullptr);
+    ~GraphicsChart() override;
 
-    void resizeEvent(QResizeEvent* _event) override;
+    void clear() override;
 
-    void clear();
+public:
 
-    bool bindMode() const;
-    qreal xscale() const;
-
-    qreal left() const;
-    qreal right() const;
-    qreal range() const;
-    qreal offset() const;
-    qreal region() const;
-
-    void setOffset(qreal _offset);
-    void setRange(qreal _left, qreal _right);
-    void setRegion(qreal _visibleRegionWidth);
-
+    void cancelImageUpdate();
     void update(Collections _collections);
     void update(const ArbitraryValuesCollection* _selected);
+    void setChartType(ChartType _chartType);
+    void setFilterType(FilterType _filterType);
+    void setFilterWindowSize(int _size);
+
+    ChartType chartType() const;
+    FilterType filterType() const;
+    int filterWindowSize() const;
+
+protected:
+
+    //bool canShowSlider() const override;
 
 private slots:
 
-    void onSceneSizeChanged();
-    void onWindowSizeChanged(qreal _width, qreal _height);
+    void onAutoAdjustChartChanged();
 
-}; // end of class EasyGraphicsChart.
+}; // end of class GraphicsChart.
 
 //////////////////////////////////////////////////////////////////////////
 
-class EasyArbitraryTreeWidgetItem : public QTreeWidgetItem
+class ArbitraryTreeWidgetItem : public QTreeWidgetItem
 {
     using Parent = QTreeWidgetItem;
-    using This = EasyArbitraryTreeWidgetItem;
+    using This = ArbitraryTreeWidgetItem;
     using CollectionPtr = std::unique_ptr<ArbitraryValuesCollection>;
 
+    const profiler::ArbitraryValue& m_value;
+    QFont                 m_font;
     CollectionPtr   m_collection;
-    profiler::vin_t        m_vin;
     profiler::color_t    m_color;
     int              m_widthHint;
 
 public:
 
-    explicit EasyArbitraryTreeWidgetItem(QTreeWidgetItem* _parent, profiler::color_t _color, profiler::vin_t _vin = 0);
-    ~EasyArbitraryTreeWidgetItem() override;
+    explicit ArbitraryTreeWidgetItem(QTreeWidgetItem* _parent, bool _checkable, profiler::color_t _color, const profiler::ArbitraryValue& _value);
+    ~ArbitraryTreeWidgetItem() override;
 
     QVariant data(int _column, int _role) const override;
 
+    const profiler::ArbitraryValue& value() const;
+
     void setWidthHint(int _width);
+    void setBold(bool _isBold);
 
     const ArbitraryValuesCollection* collection() const;
-    void collectValues(profiler::thread_id_t _threadId);
+    ArbitraryValuesCollection* collection();
+    void collectValues(profiler::thread_id_t _threadId, ChartType _chartType);
     void interrupt();
 
     profiler::color_t color() const;
 
-}; // end of class EasyArbitraryTreeWidgetItem.
+    bool isArrayItem() const;
+    int getSelfIndexInArray() const;
+
+private:
+
+    profiler::block_id_t getParentBlockId(QTreeWidgetItem* _item) const;
+
+}; // end of class ArbitraryTreeWidgetItem.
 
 //////////////////////////////////////////////////////////////////////////
 
-class EasyArbitraryValuesWidget : public QWidget
+class ArbitraryValuesWidget : public QWidget
 {
     Q_OBJECT
 
     using Parent = QWidget;
-    using This = EasyArbitraryValuesWidget;
+    using This = ArbitraryValuesWidget;
 
-    QTimer                  m_timer;
-    QTimer       m_collectionsTimer;
-    QList<EasyArbitraryTreeWidgetItem*> m_checkedItems;
-    QTreeWidget*       m_treeWidget;
-    EasyGraphicsChart*      m_chart;
+    QTimer                      m_collectionsTimer;
+    QList<ArbitraryTreeWidgetItem*> m_checkedItems;
+    class QSplitter*                    m_splitter;
+    QTreeWidget*                      m_treeWidget;
+    GraphicsChart*                         m_chart;
+    class QLabel*                 m_filterBoxLabel;
+    class QComboBox*              m_filterComboBox;
+    class QLabel*              m_filterWindowLabel;
+    class QSpinBox*           m_filterWindowPicker;
+    class QAction*             m_exportToCsvAction;
+    ArbitraryTreeWidgetItem*            m_boldItem;
+    profiler::thread_id_t               m_threadId;
+    profiler::block_index_t           m_blockIndex;
+    profiler::block_id_t                 m_blockId;
+    const bool                       m_bMainWidget;
+
+    explicit ArbitraryValuesWidget(bool _isMainWidget, profiler::thread_id_t _threadId
+        , profiler::block_index_t _blockIndex, profiler::block_id_t _blockId, QWidget* _parent);
+    explicit ArbitraryValuesWidget(const QList<ArbitraryTreeWidgetItem*>& _checkedItems
+        , QTreeWidgetItem* _currentItem, profiler::thread_id_t _threadId
+        , profiler::block_index_t _blockIndex, profiler::block_id_t _blockId, QWidget* _parent = nullptr);
 
 public:
 
-    explicit EasyArbitraryValuesWidget(QWidget* _parent = nullptr);
-    ~EasyArbitraryValuesWidget() override;
+    explicit ArbitraryValuesWidget(QWidget* _parent = nullptr);
+    ~ArbitraryValuesWidget() override;
 
-    void clear();
+    void contextMenuEvent(QContextMenuEvent*) override { /* ignore context menu event */ }
 
 public slots:
 
+    void clear();
     void rebuild();
+    void rebuild(profiler::thread_id_t _threadId, profiler::block_index_t _blockIndex, profiler::block_id_t _blockId);
+    void select(const profiler::ArbitraryValue& _value, bool _resetOthers = true);
 
 private slots:
 
-    void onSelectedThreadChanged(profiler::thread_id_t _id);
+    void onSelectedThreadChanged(profiler::thread_id_t);
     void onSelectedBlockChanged(uint32_t _block_index);
     void onSelectedBlockIdChanged(profiler::block_id_t _id);
     void onItemDoubleClicked(QTreeWidgetItem* _item, int _column);
     void onItemChanged(QTreeWidgetItem* _item, int _column);
     void onCurrentItemChanged(QTreeWidgetItem*, QTreeWidgetItem*);
     void onCollectionsTimeout();
+    void onRegularChartTypeChecked(bool _checked);
+    void onComplexityChartTypeChecked(bool _checked);
+    void onFilterComboBoxChanged(int _index);
+    void onFilterWindowSizeChanged(int _size);
+    void onExportToCsvClicked(bool);
+    void onOpenInNewWindowClicked(bool);
 
 private:
+
+    void repaint();
 
     void buildTree(profiler::thread_id_t _threadId, profiler::block_index_t _blockIndex, profiler::block_id_t _blockId);
     QTreeWidgetItem* buildTreeForThread(const profiler::BlocksTreeRoot& _threadRoot, profiler::block_index_t _blockIndex, profiler::block_id_t _blockId);
 
-}; // end of class EasyArbitraryValuesWidget.
+    void loadSettings();
+    void saveSettings();
+
+}; // end of class ArbitraryValuesWidget.
 
 //////////////////////////////////////////////////////////////////////////
 

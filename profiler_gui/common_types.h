@@ -13,7 +13,7 @@
 *                   : *
 * ----------------- :
 * license           : Lightweight profiler library for c++
-*                   : Copyright(C) 2016-2017  Sergey Yagovtsev, Victor Zarubkin
+*                   : Copyright(C) 2016-2018  Sergey Yagovtsev, Victor Zarubkin
 *                   :
 *                   : Licensed under either of
 *                   :     * MIT license (LICENSE.MIT or http://opensource.org/licenses/MIT)
@@ -122,8 +122,6 @@ struct EasyBlock Q_DECL_FINAL
     {
     }
 
-private:
-
     EasyBlock(const EasyBlock&) = delete;
 };
 #pragma pack(pop)
@@ -164,6 +162,20 @@ enum TimeUnits : int8_t
 }; // END of enum TimeUnits.
 
 //////////////////////////////////////////////////////////////////////////
+
+class BoolFlagGuard EASY_FINAL
+{
+    bool&    m_ref;
+    bool m_restore;
+
+public:
+
+    explicit BoolFlagGuard(bool& flag) : m_ref(flag), m_restore(!flag) {}
+    explicit BoolFlagGuard(bool& flag, bool value) : m_ref(flag), m_restore(!value) { m_ref = value; }
+    ~BoolFlagGuard() { restore(); }
+
+    void restore() { m_ref = m_restore; }
+};
 
 } // END of namespace profiler_gui.
 

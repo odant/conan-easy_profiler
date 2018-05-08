@@ -14,6 +14,8 @@ if (Qt5Widgets_FOUND)
         main.cpp
         arbitrary_value_inspector.h
         arbitrary_value_inspector.cpp
+        arbitrary_value_tooltip.h
+        arbitrary_value_tooltip.cpp
         blocks_graphics_view.h
         blocks_graphics_view.cpp
         blocks_tree_widget.h
@@ -36,14 +38,20 @@ if (Qt5Widgets_FOUND)
         globals.h
         globals.cpp
         globals_qobjects.cpp
+        graphics_image_item.h
+        graphics_image_item.cpp
+        graphics_slider_area.h
+        graphics_slider_area.cpp
         main_window.h
         main_window.cpp
+        thread_pool.h
+        thread_pool.cpp
+        thread_pool_task.h
+        thread_pool_task.cpp
         tree_widget_item.h
         tree_widget_item.cpp
         tree_widget_loader.h
         tree_widget_loader.cpp
-        treeview_first_column_delegate.h
-        treeview_first_column_delegate.cpp
         resources.qrc
         resources.rc
     )

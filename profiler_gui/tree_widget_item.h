@@ -5,7 +5,7 @@
 * author            : Victor Zarubkin
 * email             : v.s.zarubkin@gmail.com
 * ----------------- : 
-* description       : The file contains declaration of EasyTreeWidgetItem
+* description       : The file contains declaration of TreeWidgetItem
 *                   : for displyaing EasyProfiler blocks tree.
 * ----------------- : 
 * change log        : * 2016/08/18 Victor Zarubkin: moved sources from blocks_tree_widget.h
@@ -14,7 +14,7 @@
 *                   : * 
 * ----------------- : 
 * license           : Lightweight profiler library for c++
-*                   : Copyright(C) 2016-2017  Sergey Yagovtsev, Victor Zarubkin
+*                   : Copyright(C) 2016-2018  Sergey Yagovtsev, Victor Zarubkin
 *                   :
 *                   : Licensed under either of
 *                   :     * MIT license (LICENSE.MIT or http://opensource.org/licenses/MIT)
@@ -113,39 +113,40 @@ enum EasyColumnsIndexes
 
 //////////////////////////////////////////////////////////////////////////
 
-class EasyTreeWidgetItem : public QTreeWidgetItem
+class TreeWidgetItem : public QTreeWidgetItem
 {
     using Parent = QTreeWidgetItem;
-    using This = EasyTreeWidgetItem;
+    using This = TreeWidgetItem;
 
     QFont                                    m_font;
-    const ::profiler::block_index_t         m_block;
+    const profiler::block_index_t           m_block;
     QRgb                            m_customBGColor;
     std::bitset<17>                   m_bHasToolTip;
     bool                                    m_bMain;
 
 public:
 
-    explicit EasyTreeWidgetItem(const ::profiler::block_index_t _treeBlock = ::profiler_gui::numeric_max<decltype(m_block)>(), Parent* _parent = nullptr);
-    virtual ~EasyTreeWidgetItem();
+    explicit TreeWidgetItem(const profiler::block_index_t _treeBlock = profiler_gui::numeric_max<decltype(m_block)>(), Parent* _parent = nullptr);
+    ~TreeWidgetItem() override;
 
     bool operator < (const Parent& _other) const override;
     QVariant data(int _column, int _role) const override;
 
 public:
 
-    ::profiler::block_index_t block_index() const;
-    ::profiler_gui::EasyBlock& guiBlock();
-    const ::profiler::BlocksTree& block() const;
+    bool hasToolTip(int _column) const;
+    profiler::block_index_t block_index() const;
+    profiler_gui::EasyBlock& guiBlock();
+    const profiler::BlocksTree& block() const;
 
-    ::profiler::timestamp_t duration() const;
-    ::profiler::timestamp_t selfDuration() const;
+    profiler::timestamp_t duration() const;
+    profiler::timestamp_t selfDuration() const;
 
-    void setTimeSmart(int _column, ::profiler_gui::TimeUnits _units, const ::profiler::timestamp_t& _time, const QString& _prefix);
-    void setTimeSmart(int _column, ::profiler_gui::TimeUnits _units, const ::profiler::timestamp_t& _time);
+    void setTimeSmart(int _column, profiler_gui::TimeUnits _units, const profiler::timestamp_t& _time, const QString& _prefix);
+    void setTimeSmart(int _column, profiler_gui::TimeUnits _units, const profiler::timestamp_t& _time);
 
-    void setTimeMs(int _column, const ::profiler::timestamp_t& _time);
-    void setTimeMs(int _column, const ::profiler::timestamp_t& _time, const QString& _prefix);
+    void setTimeMs(int _column, const profiler::timestamp_t& _time);
+    void setTimeMs(int _column, const profiler::timestamp_t& _time, const QString& _prefix);
 
     void setBackgroundColor(QRgb _color);
 
@@ -159,25 +160,24 @@ public:
 
 private:
 
-    bool hasToolTip(int _column) const;
     void setHasToolTip(int _column);
 
-}; // END of class EasyTreeWidgetItem.
+}; // END of class TreeWidgetItem.
 
 //////////////////////////////////////////////////////////////////////////
 
-class EasyItemDelegate : public QStyledItemDelegate
+class TreeWidgetItemDelegate : public QStyledItemDelegate
 {
     Q_OBJECT
     QTreeWidget* m_treeWidget;
 
 public:
 
-    explicit EasyItemDelegate(QTreeWidget* parent = nullptr);
-    ~EasyItemDelegate() override;
+    explicit TreeWidgetItemDelegate(QTreeWidget* parent = nullptr);
+    ~TreeWidgetItemDelegate() override;
     void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override;
 
-}; // END of class EasyItemDelegate.
+}; // END of class TreeWidgetItemDelegate.
 
 //////////////////////////////////////////////////////////////////////////
 

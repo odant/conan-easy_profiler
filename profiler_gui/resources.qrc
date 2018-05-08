@@ -6,9 +6,10 @@
         <file alias="logo">images/logo.svg</file>
     </qresource>
     <qresource prefix="/images/default">
+        <file alias="binoculars">images/default/binoculars.svg</file>
+        <file alias="crop">images/default/crop.svg</file>
         <file alias="exit">images/default/off.svg</file>
         <file alias="open">images/default/open-folder2.svg</file>
-        <file alias="reopen">images/default/reload-folder2.svg</file>
         <file alias="reload">images/default/reload.svg</file>
         <file alias="expand">images/default/expand.svg</file>
         <file alias="collapse">images/default/collapse.svg</file>
@@ -32,6 +33,8 @@
         <file alias="check-disabled">images/default/check-disabled.svg</file>
         <file alias="radio-check">images/default/radio-indicator.svg</file>
         <file alias="radio-check-disabled">images/default/radio-indicator-disabled.svg</file>
+        <file alias="partial-check">images/default/check-partial.svg</file>
+        <file alias="partial-check-disabled">images/default/check-partial-disabled.svg</file>
         <file alias="dock-maximize-white">images/default/maximize-white.svg</file>
         <file alias="dock-maximize-white-hover">images/default/maximize-white-hover.svg</file>
         <file alias="dock-maximize-white-pressed">images/default/maximize-white-pressed.svg</file>
@@ -47,5 +50,10 @@
         <file alias="arrow-down">images/default/arrow-down.svg</file>
         <file alias="arrow-down-hover">images/default/arrow-down-hover.svg</file>
         <file alias="arrow-down-disabled">images/default/arrow-down-disabled.svg</file>
+        <file alias="arrow-right">images/default/arrow-right.svg</file>
+        <file alias="yx-chart">images/default/yx.svg</file>
+        <file alias="big-o-chart">images/default/big-o.svg</file>
+        <file alias="csv">images/default/csv.svg</file>
+        <file alias="window">images/default/window.svg</file>
     </qresource>
 </RCC>

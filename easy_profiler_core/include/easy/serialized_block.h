@@ -1,6 +1,6 @@
 /**
 Lightweight profiler library for c++
-Copyright(C) 2016-2017  Sergey Yagovtsev, Victor Zarubkin
+Copyright(C) 2016-2018  Sergey Yagovtsev, Victor Zarubkin
 
 Licensed under either of
 	* MIT license (LICENSE.MIT or http://opensource.org/licenses/MIT)
@@ -200,6 +200,10 @@ namespace profiler {
 
         const char* data() const {
             return reinterpret_cast<const char*>(this) + sizeof(ArbitraryValue);
+        }
+
+        uint16_t data_size() const {
+            return m_size;
         }
 
         vin_t value_id() const {
