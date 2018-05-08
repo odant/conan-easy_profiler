@@ -5,7 +5,7 @@
 * author            : Victor Zarubkin
 * email             : v.s.zarubkin@gmail.com
 * ----------------- : 
-* description       : The file contains declaration of EasyDescTreeWidget and it's auxiliary classes
+* description       : The file contains declaration of DescriptorsTreeWidget and it's auxiliary classes
 *                   : for displyaing EasyProfiler blocks descriptors tree.
 * ----------------- : 
 * change log        : * 2016/09/17 Victor Zarubkin: initial commit.
@@ -13,7 +13,7 @@
 *                   : * 
 * ----------------- : 
 * license           : Lightweight profiler library for c++
-*                   : Copyright(C) 2016-2017  Sergey Yagovtsev, Victor Zarubkin
+*                   : Copyright(C) 2016-2018  Sergey Yagovtsev, Victor Zarubkin
 *                   :
 *                   : Licensed under either of
 *                   :     * MIT license (LICENSE.MIT or http://opensource.org/licenses/MIT)
@@ -67,10 +67,10 @@
 
 //////////////////////////////////////////////////////////////////////////
 
-class EasyDescWidgetItem : public QTreeWidgetItem
+class DescriptorsTreeItem : public QTreeWidgetItem
 {
     using Parent = QTreeWidgetItem;
-    using This = EasyDescWidgetItem;
+    using This = DescriptorsTreeItem;
 
 public:
 
@@ -89,8 +89,8 @@ private:
 
 public:
 
-    explicit EasyDescWidgetItem(::profiler::block_id_t _desc, Parent* _parent = nullptr);
-    virtual ~EasyDescWidgetItem();
+    explicit DescriptorsTreeItem(::profiler::block_id_t _desc, Parent* _parent = nullptr);
+    ~DescriptorsTreeItem() override;
 
     bool operator < (const Parent& _other) const override;
     QVariant data(int _column, int _role) const override;
@@ -99,30 +99,30 @@ public:
 
     // Public inline methods
 
-    inline ::profiler::block_id_t desc() const
+    ::profiler::block_id_t desc() const
     {
         return m_desc;
     }
 
-    inline void setType(Type _type)
+    void setType(Type _type)
     {
         m_type = _type;
     }
 
-}; // END of class EasyDescWidgetItem.
+}; // END of class DescriptorsTreeItem.
 
 //////////////////////////////////////////////////////////////////////////
 
-class EasyDescTreeWidget : public QTreeWidget
+class DescriptorsTreeWidget : public QTreeWidget
 {
     Q_OBJECT
 
-    typedef QTreeWidget    Parent;
-    typedef EasyDescTreeWidget   This;
+    using Parent = QTreeWidget;
+    using This = DescriptorsTreeWidget;
 
-    typedef ::std::vector<EasyDescWidgetItem*> Items;
-    typedef ::std::vector<QTreeWidgetItem*> TreeItems;
-    typedef ::std::unordered_set<::std::string> ExpandedFiles;
+    using Items = ::std::vector<DescriptorsTreeItem*>;
+    using TreeItems = ::std::vector<QTreeWidgetItem*>;
+    using ExpandedFiles = ::std::unordered_set<::std::string>;
 
 protected:
 
@@ -139,8 +139,8 @@ public:
 
     // Public virtual methods
 
-    explicit EasyDescTreeWidget(QWidget* _parent = nullptr);
-    virtual ~EasyDescTreeWidget();
+    explicit DescriptorsTreeWidget(QWidget* _parent = nullptr);
+    ~DescriptorsTreeWidget() override;
     void contextMenuEvent(QContextMenuEvent* _event) override;
 
 public:
@@ -151,6 +151,10 @@ public:
     int findPrev(const QString& _str, Qt::MatchFlags _flags);
     void setSearchColumn(int column);
     int searchColumn() const;
+
+signals:
+
+    void searchColumnChanged(int column);
 
 public slots:
 
@@ -175,21 +179,22 @@ private:
     void loadSettings();
     void saveSettings();
 
-}; // END of class EasyDescTreeWidget.
+}; // END of class DescriptorsTreeWidget.
 
 //////////////////////////////////////////////////////////////////////////
 
-class EasyDescWidget : public QWidget
+class BlockDescriptorsWidget : public QWidget
 {
     Q_OBJECT
 
-    typedef QWidget      Parent;
-    typedef EasyDescWidget This;
+    using Parent = QWidget;
+    using This = BlockDescriptorsWidget;
 
 private:
 
-    EasyDescTreeWidget*    m_tree;
-    class EasyArbitraryValuesWidget* m_values;
+    class QSplitter*   m_splitter;
+    DescriptorsTreeWidget*    m_tree;
+    class ArbitraryValuesWidget* m_values;
     class QLineEdit*  m_searchBox;
     class QLabel*   m_foundNumber;
     class QAction* m_searchButton;
@@ -199,8 +204,8 @@ public:
 
     // Public virtual methods
 
-    explicit EasyDescWidget(QWidget* _parent = nullptr);
-    virtual ~EasyDescWidget();
+    explicit BlockDescriptorsWidget(QWidget* _parent = nullptr);
+    ~BlockDescriptorsWidget() override;
     void keyPressEvent(QKeyEvent* _event) override;
     void contextMenuEvent(QContextMenuEvent* _event) override;
 
@@ -210,6 +215,7 @@ public:
 
     void build();
     void clear();
+    class ArbitraryValuesWidget* dataViewer() const;
 
 private slots:
 
@@ -219,6 +225,8 @@ private slots:
     void findNextFromMenu(bool);
     void findPrevFromMenu(bool);
     void onSearchColumnChange(bool);
+    void onSearchBoxTextChanged(const QString& _text);
+    void onSearchColumnChanged(int column);
 
 private:
 
@@ -227,7 +235,7 @@ private:
     void loadSettings();
     void saveSettings();
 
-}; // END of class EasyDescWidget.
+}; // END of class BlockDescriptorsWidget.
 
 //////////////////////////////////////////////////////////////////////////
 

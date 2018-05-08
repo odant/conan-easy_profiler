@@ -17,7 +17,7 @@
 /* Constants */
 $TextColor: #504040;
 $DisabledTextColor: #a08888;
-$BorderColor: #cccccc;
+$BorderColor: #c4c4c4;
 $MainColor: #f44336;
 $HoveredMenuRowColor: rgb_a(#98DE98, 0.5);
 $BackgroundColor: white;
@@ -25,6 +25,7 @@ $DisabledBackgroundColor: #f0f0f0;
 $ButtonHoverColor: #922c2c;//#d77d7d;
 $ButtonPressedColor: #370400;//#922c2c;
 $FocusBorderColor: #ffbcbc;
+$TooltipColor: #ffeccc;
 $DefaultHeight: 24px;
 $ComboBoxArrowSize: 8px;
 $SpinBoxArrowSize: 8px;
@@ -42,17 +43,54 @@ $SpinBoxArrowSize: 8px;
     color: $DisabledTextColor;
 }
 
-EasyMainWindow, QToolBar, QDialog {
+MainWindow, QToolBar, QDialog {
     background-color: #f8f2f2;
 }
 
 QToolTip {
-    background-color: #ffeccc;
+    background-color: $TooltipColor;
+    border: 1px solid $BorderColor;
+    color: $TextColor;
+}
+
+ArbitraryValueToolTip {
+    margin: 0;
+    border: none;
+    background-color: $TooltipColor;
+    QWidget#cnt {
+        border: 1px solid $BorderColor;
+        background-color: transparent;
+        margin: 0;
+    }
+    QLabel {
+        background-color: transparent;
+        border: none;
+        color: $TextColor;
+    }
+    QTextEdit {
+        background-color: transparent;
+        border: none;
+        color: $TextColor;
+        selection-color: $TextColor;
+        selection-background-color: $HoveredMenuRowColor;
+    }
+}
+
+QWidget#DiagramPopup, QWidget#ThreadsPopup {
+    background-color: $TooltipColor;
     border: 1px solid $BorderColor;
 }
 
 QGraphicsView {
     border: 1px solid $BorderColor;
+}
+
+QSplitter::handle:hover {
+    background-color: rgb_a($MainColor, 0.5);
+}
+
+QSplitter::handle:pressed {
+    background-color: $MainColor;
 }
 
 /* ****************************************************************************************************************** */
@@ -105,7 +143,11 @@ QSpinBox::down-button {
 }
 
 QSpinBox::up-button:pressed, QSpinBox::down-button:pressed {
-    background-color: #f4f4f4;
+    background-color: #eaeaea;
+}
+
+QSpinBox::up-button:!pressed:hover, QSpinBox::down-button:!pressed:hover {
+    background-color: #fafafa;
 }
 
 QSpinBox::up-arrow { image: url(":/images/default/arrow-up"); height: $SpinBoxArrowSize; width: $SpinBoxArrowSize; }
@@ -152,6 +194,27 @@ QListView, QTableView, QTreeView {
     selection-color: $TextColor;
 }
 
+QTreeView::branch {
+    selection-background-color: rgb_a(#98DE98, 0.8);
+    border-bottom: 1px solid $BorderColor;
+}
+
+QTreeView::branch:selected {
+    background-color: rgb_a(#98DE98, 0.8);
+}
+
+QTreeView::branch:open:has-children {
+    padding: 9px 0 9px 0;
+    border-image: none;
+    image: url(":/images/default/arrow-down");
+}
+
+QTreeView::branch:closed:has-children {
+    padding: 9px 0 9px 0;
+    border-image: none;
+    image: url(":/images/default/arrow-right");
+}
+
 QListView::item, QTableView::item, QTreeView::item {
     height: $DefaultHeight + 2px;
     border-bottom: 1px solid $BorderColor;
@@ -171,13 +234,16 @@ QTreeView::indicator {
     margin: 0;
 }
 
-QTreeView::indicator:hover, QTreeView::indicator:checked {
+QTreeView::indicator:hover, QTreeView::indicator:checked, QTreeView::indicator:indeterminate {
     background-color: $BackgroundColor;
     border: 1px solid $BorderColor;
 }
 
 QTreeView::indicator:checked { image: url(":/images/default/check"); }
 QTreeView::indicator:checked:disabled { image: url(":/images/default/check-disabled"); }
+
+QTreeView::indicator:indeterminate { image: url(":/images/default/partial-check"); }
+QTreeView::indicator:indeterminate:disabled { image: url(":/images/default/partial-check-disabled"); }
 
 /* ****************************************************************************************************************** */
 QMenu {
@@ -291,7 +357,7 @@ QHeaderView::section {
 
 
 /* ****************************************************************************************************************** */
-EasyDockWidget
+DockWidget
 {
     QWidget#EasyDockWidgetTitle
     {
@@ -324,12 +390,6 @@ EasyDockWidget
         QPushButton#EasyDockWidgetCloseButton:hover { image: url(":/images/default/dock-close-white-hover"); }
         QPushButton#EasyDockWidgetCloseButton:pressed { image: url(":/images/default/dock-close-white-pressed"); }
     }
-}
-
-/* ****************************************************************************************************************** */
-QWidget#DiagramPopup, QWidget#ThreadsPopup {
-    background-color: $BackgroundColor;
-    border: 1px solid $BorderColor;
 }
 
 /* ****************************************************************************************************************** */

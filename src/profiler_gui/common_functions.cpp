@@ -12,7 +12,7 @@
 *                   : *
 * ----------------- :
 * license           : Lightweight profiler library for c++
-*                   : Copyright(C) 2016-2017  Sergey Yagovtsev, Victor Zarubkin
+*                   : Copyright(C) 2016-2018  Sergey Yagovtsev, Victor Zarubkin
 *                   :
 *                   : Licensed under either of
 *                   :     * MIT license (LICENSE.MIT or http://opensource.org/licenses/MIT)
@@ -53,6 +53,78 @@
 ************************************************************************/
 
 #include "common_functions.h"
+
+template <class T>
+static QString toString(const profiler::ArbitraryValue& _serializedValue, int _index) {
+    return QString::number(_serializedValue.toArray<T>()->at(_index));
+}
+
+template <class T>
+static QString toString(const profiler::ArbitraryValue& _serializedValue) {
+    return QString::number(_serializedValue.toValue<T>()->value());
+}
+
+template <class T>
+static double toReal(const profiler::ArbitraryValue& _serializedValue, int _index) {
+    return static_cast<double>(_serializedValue.toArray<T>()->at(_index));
+}
+
+template <class T>
+static double toReal(const profiler::ArbitraryValue& _serializedValue) {
+    return static_cast<double>(_serializedValue.toValue<T>()->value());
+}
+
+template <profiler::DataType type>
+inline EASY_CONSTEXPR_FCN uint16_t sizeOf() {
+    return static_cast<uint16_t>(sizeof(typename profiler::StdType<type>::value_type));
+}
+
+QString arrayToString(const profiler::ArbitraryValue& _serializedValue, int _index)
+{
+    switch (_serializedValue.type())
+    {
+        case profiler::DataType::Bool:
+        {
+            const auto value = _serializedValue.toArray<bool>()->at(_index);
+            return value ? QStringLiteral("true") : QStringLiteral("false");
+        }
+
+        case profiler::DataType::Char:   return QChar(_serializedValue.toArray<char>  ()->at(_index));
+        case profiler::DataType::Int8:   return QChar(_serializedValue.toArray<int8_t>()->at(_index));
+        case profiler::DataType::Uint8:  return toString<uint8_t> (_serializedValue, _index);
+        case profiler::DataType::Int16:  return toString<int16_t> (_serializedValue, _index);
+        case profiler::DataType::Uint16: return toString<uint16_t>(_serializedValue, _index);
+        case profiler::DataType::Int32:  return toString<int32_t> (_serializedValue, _index);
+        case profiler::DataType::Uint32: return toString<uint32_t>(_serializedValue, _index);
+        case profiler::DataType::Int64:  return toString<int64_t> (_serializedValue, _index);
+        case profiler::DataType::Uint64: return toString<uint64_t>(_serializedValue, _index);
+        case profiler::DataType::Float:  return toString<float>   (_serializedValue, _index);
+        case profiler::DataType::Double: return toString<double>  (_serializedValue, _index);
+        case profiler::DataType::String: return QChar(_serializedValue.data()[_index]);
+        default: return QStringLiteral("??");
+    }
+}
+
+QString singleValueToString(const profiler::ArbitraryValue& _serializedValue)
+{
+    switch (_serializedValue.type())
+    {
+        case profiler::DataType::Bool:   return _serializedValue.toValue<bool>()->value() ? QStringLiteral("true") : QStringLiteral("false");
+        case profiler::DataType::Char:   return QChar(_serializedValue.toValue<char>  ()->value());
+        case profiler::DataType::Int8:   return QChar(_serializedValue.toValue<int8_t>()->value());
+        case profiler::DataType::Uint8:  return toString<uint8_t> (_serializedValue);
+        case profiler::DataType::Int16:  return toString<int16_t> (_serializedValue);
+        case profiler::DataType::Uint16: return toString<uint16_t>(_serializedValue);
+        case profiler::DataType::Int32:  return toString<int32_t> (_serializedValue);
+        case profiler::DataType::Uint32: return toString<uint32_t>(_serializedValue);
+        case profiler::DataType::Int64:  return toString<int64_t> (_serializedValue);
+        case profiler::DataType::Uint64: return toString<uint64_t>(_serializedValue);
+        case profiler::DataType::Float:  return toString<float>   (_serializedValue);
+        case profiler::DataType::Double: return toString<double>  (_serializedValue);
+        case profiler::DataType::String: return _serializedValue.data();
+        default: return QStringLiteral("??");
+    }
+}
 
 namespace profiler_gui {
 
@@ -266,26 +338,74 @@ namespace profiler_gui {
         {
             if (_serializedValue.type() == ::profiler::DataType::String)
                 return _serializedValue.data();
-            return QStringLiteral("[...] array");
+
+            auto str = QString("[%1").arg(valueString(_serializedValue, 0));
+            const int size = valueArraySize(_serializedValue);
+            for (int i = 1; i < size; ++i)
+                str.append(QString(", %1").arg(valueString(_serializedValue, i)));
+            str.append(QChar(']'));
+
+            return str;
         }
 
-        switch (_serializedValue.type())
+        return singleValueToString(_serializedValue);
+    }
+
+    QString shortValueString(const ::profiler::ArbitraryValue& _serializedValue)
+    {
+        if (_serializedValue.isArray())
         {
-            case ::profiler::DataType::Bool:   return _serializedValue.toValue<bool>()->value() ? QStringLiteral("true") : QStringLiteral("false");
-            case ::profiler::DataType::Char:   return QChar(_serializedValue.toValue<char>()->value());
-            case ::profiler::DataType::Int8:   return QChar(_serializedValue.toValue<int8_t>()->value());
-            case ::profiler::DataType::Uint8:  return QString::number(_serializedValue.toValue<uint8_t>()->value());
-            case ::profiler::DataType::Int16:  return QString::number(_serializedValue.toValue<int16_t>()->value());
-            case ::profiler::DataType::Uint16: return QString::number(_serializedValue.toValue<uint16_t>()->value());
-            case ::profiler::DataType::Int32:  return QString::number(_serializedValue.toValue<int32_t>()->value());
-            case ::profiler::DataType::Uint32: return QString::number(_serializedValue.toValue<uint32_t>()->value());
-            case ::profiler::DataType::Int64:  return QString::number(_serializedValue.toValue<int64_t>()->value());
-            case ::profiler::DataType::Uint64: return QString::number(_serializedValue.toValue<uint64_t>()->value());
-            case ::profiler::DataType::Float:  return QString::number(_serializedValue.toValue<float>()->value());
-            case ::profiler::DataType::Double: return QString::number(_serializedValue.toValue<double>()->value());
-            case ::profiler::DataType::String: return _serializedValue.data();
-            default: return QStringLiteral("Unknown");
+            if (_serializedValue.type() == ::profiler::DataType::String)
+                return _serializedValue.data();
+
+            auto str = QString("[%1").arg(valueString(_serializedValue, 0));
+            const int size = valueArraySize(_serializedValue);
+            if (size < 7)
+            {
+                for (int i = 1; i < size; ++i)
+                    str.append(QString(", %1").arg(valueString(_serializedValue, i)));
+            }
+            else
+            {
+                for (int i = 1; i < 6; ++i)
+                    str.append(QString(", %1").arg(valueString(_serializedValue, i)));
+                str.append(QString(", ..., %1").arg(valueString(_serializedValue, size - 1)));
+            }
+
+            str.append(QChar(']'));
+            return str;
         }
+
+        return singleValueToString(_serializedValue);
+    }
+
+    QString valueString(const ::profiler::ArbitraryValue& _serializedValue, int _index)
+    {
+        if (_serializedValue.isArray())
+            return arrayToString(_serializedValue, _index);
+        return singleValueToString(_serializedValue);
+    }
+
+    int valueArraySize(const ::profiler::ArbitraryValue& _serializedValue)
+    {
+        EASY_STATIC_CONSTEXPR uint16_t DataSizes[] = {
+            sizeOf<::profiler::DataType::Bool>(),
+            sizeOf<::profiler::DataType::Char>(),
+            sizeOf<::profiler::DataType::Int8>(),
+            sizeOf<::profiler::DataType::Uint8>(),
+            sizeOf<::profiler::DataType::Int16>(),
+            sizeOf<::profiler::DataType::Uint16>(),
+            sizeOf<::profiler::DataType::Int32>(),
+            sizeOf<::profiler::DataType::Uint32>(),
+            sizeOf<::profiler::DataType::Int64>(),
+            sizeOf<::profiler::DataType::Uint64>(),
+            sizeOf<::profiler::DataType::Float>(),
+            sizeOf<::profiler::DataType::Double>(),
+            sizeOf<::profiler::DataType::String>(),
+            1
+        };
+
+        return _serializedValue.data_size() / DataSizes[int_cast(_serializedValue.type())];
     }
 
     double value2real(const ::profiler::ArbitraryValue& _serializedValue, int _index)
@@ -300,16 +420,16 @@ namespace profiler_gui {
                     return value ? 1 : 0;
                 }
 
-                case ::profiler::DataType::Char:   return static_cast<double>(_serializedValue.toArray<char>()->at(_index));
-                case ::profiler::DataType::Int8:   return static_cast<double>(_serializedValue.toArray<int8_t>()->at(_index));
-                case ::profiler::DataType::Uint8:  return static_cast<double>(_serializedValue.toArray<uint8_t>()->at(_index));
-                case ::profiler::DataType::Int16:  return static_cast<double>(_serializedValue.toArray<int16_t>()->at(_index));
-                case ::profiler::DataType::Uint16: return static_cast<double>(_serializedValue.toArray<uint16_t>()->at(_index));
-                case ::profiler::DataType::Int32:  return static_cast<double>(_serializedValue.toArray<int32_t>()->at(_index));
-                case ::profiler::DataType::Uint32: return static_cast<double>(_serializedValue.toArray<uint32_t>()->at(_index));
-                case ::profiler::DataType::Int64:  return static_cast<double>(_serializedValue.toArray<int64_t>()->at(_index));
-                case ::profiler::DataType::Uint64: return static_cast<double>(_serializedValue.toArray<uint64_t>()->at(_index));
-                case ::profiler::DataType::Float:  return static_cast<double>(_serializedValue.toArray<float>()->at(_index));
+                case ::profiler::DataType::Char:   return toReal<char>    (_serializedValue, _index);
+                case ::profiler::DataType::Int8:   return toReal<int8_t>  (_serializedValue, _index);
+                case ::profiler::DataType::Uint8:  return toReal<uint8_t> (_serializedValue, _index);
+                case ::profiler::DataType::Int16:  return toReal<int16_t> (_serializedValue, _index);
+                case ::profiler::DataType::Uint16: return toReal<uint16_t>(_serializedValue, _index);
+                case ::profiler::DataType::Int32:  return toReal<int32_t> (_serializedValue, _index);
+                case ::profiler::DataType::Uint32: return toReal<uint32_t>(_serializedValue, _index);
+                case ::profiler::DataType::Int64:  return toReal<int64_t> (_serializedValue, _index);
+                case ::profiler::DataType::Uint64: return toReal<uint64_t>(_serializedValue, _index);
+                case ::profiler::DataType::Float:  return toReal<float>   (_serializedValue, _index);
                 case ::profiler::DataType::Double: return _serializedValue.toArray<double>()->at(_index);
                 case ::profiler::DataType::String: return static_cast<double>(_serializedValue.data()[_index]);
                 default: return 0;
@@ -324,16 +444,16 @@ namespace profiler_gui {
                 return value ? 1 : 0;
             }
 
-            case ::profiler::DataType::Char:   return static_cast<double>(_serializedValue.toValue<char>()->value());
-            case ::profiler::DataType::Int8:   return static_cast<double>(_serializedValue.toValue<int8_t>()->value());
-            case ::profiler::DataType::Uint8:  return static_cast<double>(_serializedValue.toValue<uint8_t>()->value());
-            case ::profiler::DataType::Int16:  return static_cast<double>(_serializedValue.toValue<int16_t>()->value());
-            case ::profiler::DataType::Uint16: return static_cast<double>(_serializedValue.toValue<uint16_t>()->value());
-            case ::profiler::DataType::Int32:  return static_cast<double>(_serializedValue.toValue<int32_t>()->value());
-            case ::profiler::DataType::Uint32: return static_cast<double>(_serializedValue.toValue<uint32_t>()->value());
-            case ::profiler::DataType::Int64:  return static_cast<double>(_serializedValue.toValue<int64_t>()->value());
-            case ::profiler::DataType::Uint64: return static_cast<double>(_serializedValue.toValue<uint64_t>()->value());
-            case ::profiler::DataType::Float:  return static_cast<double>(_serializedValue.toValue<float>()->value());
+            case ::profiler::DataType::Char:   return toReal<char>    (_serializedValue);
+            case ::profiler::DataType::Int8:   return toReal<int8_t>  (_serializedValue);
+            case ::profiler::DataType::Uint8:  return toReal<uint8_t> (_serializedValue);
+            case ::profiler::DataType::Int16:  return toReal<int16_t> (_serializedValue);
+            case ::profiler::DataType::Uint16: return toReal<uint16_t>(_serializedValue);
+            case ::profiler::DataType::Int32:  return toReal<int32_t> (_serializedValue);
+            case ::profiler::DataType::Uint32: return toReal<uint32_t>(_serializedValue);
+            case ::profiler::DataType::Int64:  return toReal<int64_t> (_serializedValue);
+            case ::profiler::DataType::Uint64: return toReal<uint64_t>(_serializedValue);
+            case ::profiler::DataType::Float:  return toReal<float>   (_serializedValue);
             case ::profiler::DataType::Double: return _serializedValue.toValue<double>()->value();
             case ::profiler::DataType::String: return static_cast<double>(_serializedValue.data()[_index]);
             default: return 0;

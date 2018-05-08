@@ -5,7 +5,7 @@
 * author            : Victor Zarubkin
 * email             : v.s.zarubkin@gmail.com
 * ----------------- :
-* description       : The file contains implementation of EasyTreeWidgetItem.
+* description       : The file contains implementation of TreeWidgetItem.
 * ----------------- :
 * change log        : * 2016/08/18 Victor Zarubkin: Moved sources from blocks_tree_widget.cpp
 *                   :       and renamed classes from Prof* to Easy*.
@@ -13,7 +13,7 @@
 *                   : * 
 * ----------------- :
 * license           : Lightweight profiler library for c++
-*                   : Copyright(C) 2016-2017  Sergey Yagovtsev, Victor Zarubkin
+*                   : Copyright(C) 2016-2018  Sergey Yagovtsev, Victor Zarubkin
 *                   :
 *                   : Licensed under either of
 *                   :     * MIT license (LICENSE.MIT or http://opensource.org/licenses/MIT)
@@ -109,7 +109,7 @@ EASY_CONSTEXPR int ColumnBit[COL_COLUMNS_NUMBER] = {
 
 //////////////////////////////////////////////////////////////////////////
 
-EasyTreeWidgetItem::EasyTreeWidgetItem(const ::profiler::block_index_t _treeBlock, Parent* _parent)
+TreeWidgetItem::TreeWidgetItem(const profiler::block_index_t _treeBlock, Parent* _parent)
     : Parent(_parent, QTreeWidgetItem::UserType)
     , m_block(_treeBlock)
     , m_customBGColor(0)
@@ -118,11 +118,11 @@ EasyTreeWidgetItem::EasyTreeWidgetItem(const ::profiler::block_index_t _treeBloc
 
 }
 
-EasyTreeWidgetItem::~EasyTreeWidgetItem()
+TreeWidgetItem::~TreeWidgetItem()
 {
 }
 
-bool EasyTreeWidgetItem::operator < (const Parent& _other) const
+bool TreeWidgetItem::operator < (const Parent& _other) const
 {
     const auto col = treeWidget()->sortColumn();
 
@@ -164,24 +164,22 @@ bool EasyTreeWidgetItem::operator < (const Parent& _other) const
             return data(col, Qt::UserRole).toULongLong() < _other.data(col, Qt::UserRole).toULongLong();
         }
     }
-
-    return false;
 }
 
-bool EasyTreeWidgetItem::hasToolTip(int _column) const
+bool TreeWidgetItem::hasToolTip(int _column) const
 {
     const int bit = ColumnBit[_column];
     return bit < 0 ? false : m_bHasToolTip.test(static_cast<size_t>(bit));
 }
 
-void EasyTreeWidgetItem::setHasToolTip(int _column)
+void TreeWidgetItem::setHasToolTip(int _column)
 {
     const int bit = ColumnBit[_column];
     if (bit >= 0)
         m_bHasToolTip.set(static_cast<size_t>(bit), true);
 }
 
-QVariant EasyTreeWidgetItem::data(int _column, int _role) const
+QVariant TreeWidgetItem::data(int _column, int _role) const
 {
     if (_column == COL_NAME)
     {
@@ -209,7 +207,7 @@ QVariant EasyTreeWidgetItem::data(int _column, int _role) const
             return m_font;
 
         case Qt::ForegroundRole:
-            return m_bMain ? QVariant::fromValue(QColor::fromRgb(::profiler_gui::SELECTED_THREAD_FOREGROUND)) : QVariant();
+            return m_bMain ? QVariant::fromValue(QColor::fromRgb(profiler_gui::SELECTED_THREAD_FOREGROUND)) : QVariant();
         
         case Qt::ToolTipRole:
             return hasToolTip(_column) ?
@@ -221,40 +219,40 @@ QVariant EasyTreeWidgetItem::data(int _column, int _role) const
     }
 }
 
-::profiler::block_index_t EasyTreeWidgetItem::block_index() const
+profiler::block_index_t TreeWidgetItem::block_index() const
 {
     return m_block;
 }
 
-::profiler_gui::EasyBlock& EasyTreeWidgetItem::guiBlock()
+profiler_gui::EasyBlock& TreeWidgetItem::guiBlock()
 {
     return easyBlock(m_block);
 }
 
-const ::profiler::BlocksTree& EasyTreeWidgetItem::block() const
+const profiler::BlocksTree& TreeWidgetItem::block() const
 {
     return easyBlocksTree(m_block);
 }
 
-::profiler::timestamp_t EasyTreeWidgetItem::duration() const
+profiler::timestamp_t TreeWidgetItem::duration() const
 {
     if (parent() != nullptr)
         return block().node->duration();
     return data(COL_DURATION, Qt::UserRole).toULongLong();
 }
 
-::profiler::timestamp_t EasyTreeWidgetItem::selfDuration() const
+profiler::timestamp_t TreeWidgetItem::selfDuration() const
 {
     return data(COL_SELF_DURATION, Qt::UserRole).toULongLong();
 }
 
-void EasyTreeWidgetItem::setTimeSmart(int _column, ::profiler_gui::TimeUnits _units, const ::profiler::timestamp_t& _time, const QString& _prefix)
+void TreeWidgetItem::setTimeSmart(int _column, profiler_gui::TimeUnits _units, const profiler::timestamp_t& _time, const QString& _prefix)
 {
-    const ::profiler::timestamp_t nanosecondsTime = PROF_NANOSECONDS(_time);
+    const profiler::timestamp_t nanosecondsTime = PROF_NANOSECONDS(_time);
 
     setData(_column, Qt::UserRole, (quint64)nanosecondsTime);
     setHasToolTip(_column);
-    setText(_column, QString("%1%2").arg(_prefix).arg(::profiler_gui::timeStringRealNs(_units, nanosecondsTime, 3)));
+    setText(_column, QString("%1%2").arg(_prefix).arg(profiler_gui::timeStringRealNs(_units, nanosecondsTime, 3)));
 
 //     if (_time < 1e3)
 //     {
@@ -274,46 +272,46 @@ void EasyTreeWidgetItem::setTimeSmart(int _column, ::profiler_gui::TimeUnits _un
 //     }
 }
 
-void EasyTreeWidgetItem::setTimeSmart(int _column, ::profiler_gui::TimeUnits _units, const ::profiler::timestamp_t& _time)
+void TreeWidgetItem::setTimeSmart(int _column, profiler_gui::TimeUnits _units, const profiler::timestamp_t& _time)
 {
-    const ::profiler::timestamp_t nanosecondsTime = PROF_NANOSECONDS(_time);
+    const profiler::timestamp_t nanosecondsTime = PROF_NANOSECONDS(_time);
 
     setData(_column, Qt::UserRole, (quint64)nanosecondsTime);
     setHasToolTip(_column);
-    setText(_column, ::profiler_gui::timeStringRealNs(_units, nanosecondsTime, 3));
+    setText(_column, profiler_gui::timeStringRealNs(_units, nanosecondsTime, 3));
 }
 
-void EasyTreeWidgetItem::setTimeMs(int _column, const ::profiler::timestamp_t& _time)
+void TreeWidgetItem::setTimeMs(int _column, const profiler::timestamp_t& _time)
 {
-    const ::profiler::timestamp_t nanosecondsTime = PROF_NANOSECONDS(_time);
+    const profiler::timestamp_t nanosecondsTime = PROF_NANOSECONDS(_time);
     setData(_column, Qt::UserRole, (quint64)nanosecondsTime);
     setHasToolTip(_column);
     setText(_column, QString::number(double(nanosecondsTime) * 1e-6, 'g', 9));
 }
 
-void EasyTreeWidgetItem::setTimeMs(int _column, const ::profiler::timestamp_t& _time, const QString& _prefix)
+void TreeWidgetItem::setTimeMs(int _column, const profiler::timestamp_t& _time, const QString& _prefix)
 {
-    const ::profiler::timestamp_t nanosecondsTime = PROF_NANOSECONDS(_time);
+    const profiler::timestamp_t nanosecondsTime = PROF_NANOSECONDS(_time);
     setData(_column, Qt::UserRole, (quint64)nanosecondsTime);
     setHasToolTip(_column);
     setText(_column, QString("%1%2").arg(_prefix).arg(double(nanosecondsTime) * 1e-6, 0, 'g', 9));
 }
 
-void EasyTreeWidgetItem::setBackgroundColor(QRgb _color)
+void TreeWidgetItem::setBackgroundColor(QRgb _color)
 {
     m_customBGColor = _color;
 }
 
-void EasyTreeWidgetItem::setMain(bool _main)
+void TreeWidgetItem::setMain(bool _main)
 {
     m_bMain = _main;
 }
 
-void EasyTreeWidgetItem::collapseAll()
+void TreeWidgetItem::collapseAll()
 {
     for (int i = 0, childrenNumber = childCount(); i < childrenNumber; ++i)
     {
-        static_cast<EasyTreeWidgetItem*>(child(i))->collapseAll();
+        static_cast<TreeWidgetItem*>(child(i))->collapseAll();
     }
 
     setExpanded(false);
@@ -321,11 +319,11 @@ void EasyTreeWidgetItem::collapseAll()
         guiBlock().expanded = false;
 }
 
-void EasyTreeWidgetItem::expandAll()
+void TreeWidgetItem::expandAll()
 {
     for (int i = 0, childrenNumber = childCount(); i < childrenNumber; ++i)
     {
-        static_cast<EasyTreeWidgetItem*>(child(i))->expandAll();
+        static_cast<TreeWidgetItem*>(child(i))->expandAll();
     }
 
     setExpanded(true);
@@ -333,99 +331,67 @@ void EasyTreeWidgetItem::expandAll()
         guiBlock().expanded = true;
 }
 
-void EasyTreeWidgetItem::setBold(bool _bold)
+void TreeWidgetItem::setBold(bool _bold)
 {
     m_font.setBold(_bold);
 }
 
 //////////////////////////////////////////////////////////////////////////
 
-EasyItemDelegate::EasyItemDelegate(QTreeWidget* parent) : QStyledItemDelegate(parent), m_treeWidget(parent)
+TreeWidgetItemDelegate::TreeWidgetItemDelegate(QTreeWidget* parent) : QStyledItemDelegate(parent), m_treeWidget(parent)
 {
 
 }
 
-EasyItemDelegate::~EasyItemDelegate()
+TreeWidgetItemDelegate::~TreeWidgetItemDelegate()
 {
 
 }
 
-void EasyItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
+void TreeWidgetItemDelegate::paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
 {
     auto brushData = m_treeWidget->model()->data(index, BlockColorRole);
     if (brushData.isNull())
     {
-#ifdef _WIN32
-        const auto currentTreeIndex = m_treeWidget->currentIndex();
-        if (index.parent() == currentTreeIndex.parent() && index.row() == currentTreeIndex.row())
-        {
-            // Draw selection background for selected row
-            painter->save();
-            painter->setBrush(QColor::fromRgba(0xCC98DE98));
-            painter->setPen(Qt::NoPen);
-            painter->drawRect(QRect(0, option.rect.top(), option.rect.left() + 16, option.rect.height()));
-            painter->restore();
-        }
-#endif
-
         // Draw item as usual
         QStyledItemDelegate::paint(painter, option, index);
-
-        // Draw line under tree indicator
-        const auto bottomLeft = option.rect.bottomLeft();
-        if (bottomLeft.x() > 0)
-        {
-            painter->save();
-            painter->setBrush(Qt::NoBrush);
-            painter->setPen(::profiler_gui::SYSTEM_BORDER_COLOR);
-            painter->drawLine(QPoint(0, bottomLeft.y()), bottomLeft);
-            painter->restore();
-        }
-
         return;
     }
 
+    const auto colorBlockSize = option.rect.height() >> 1;
     const auto currentTreeIndex = m_treeWidget->currentIndex();
     if (index.parent() == currentTreeIndex.parent() && index.row() == currentTreeIndex.row())
     {
         // Draw selection background for selected row
-
         painter->save();
-
         painter->setBrush(QColor::fromRgba(0xCC98DE98));
         painter->setPen(Qt::NoPen);
-
-#ifdef _WIN32
-        painter->drawRect(QRect(0, option.rect.top(), option.rect.left() + 16, option.rect.height()));
-#else
-        painter->drawRect(QRect(option.rect.left(), option.rect.top(), 16, option.rect.height()));
-#endif
-
+        painter->drawRect(QRect(option.rect.left(), option.rect.top(), colorBlockSize, option.rect.height()));
         painter->restore();
     }
 
     // Adjust rect size for drawing color marker
     QStyleOptionViewItem opt = option;
-    opt.rect.adjust(16, 0, 0, 0);
+    opt.rect.adjust(colorBlockSize, 0, 0, 0);
 
     // Draw item as usual
     QStyledItemDelegate::paint(painter, opt, index);
+
+    const auto colorBlockRest = option.rect.height() - colorBlockSize;
 
     painter->save();
 
     // Draw color marker with block color
     const auto brush = m_treeWidget->model()->data(index, Qt::UserRole + 1).value<QBrush>();
     painter->setBrush(brush);
-    painter->setPen(::profiler_gui::SYSTEM_BORDER_COLOR);
-    painter->drawRect(QRect(option.rect.left(), option.rect.top() + 5, 16, option.rect.height() - 10));
+    painter->setPen(profiler_gui::SYSTEM_BORDER_COLOR);
+    painter->drawRect(QRect(option.rect.left(), option.rect.top() + (colorBlockRest >> 1),
+                            colorBlockSize, option.rect.height() - colorBlockRest));
 
     // Draw line under tree indicator
     const auto bottomLeft = opt.rect.bottomLeft();
-    if (bottomLeft.x() > 0)
-    {
-        painter->setBrush(Qt::NoBrush);
-        painter->drawLine(QPoint(0, bottomLeft.y()), bottomLeft);
-    }
+    painter->setBrush(Qt::NoBrush);
+    painter->drawLine(QPoint(bottomLeft.x() - colorBlockSize, bottomLeft.y()), bottomLeft);
 
     painter->restore();
 }
