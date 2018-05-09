@@ -26,7 +26,6 @@ class easy_profiler_Conan(ConanFile):
         if self.settings.compiler != "Visual Studio":
             cmake.verbose = True
         cmake.definitions["BUILD_SHARED_LIBS"] = "OFF"
-        cmake.definitions["EASY_OPTION_LIB_STATIC"] = "ON"
         cmake.definitions["EASY_OPTION_PRETTY_PRINT"] = "ON"
         cmake.definitions["EASY_PROFILER_NO_GUI"] = "ON"
         cmake.definitions["EASY_PROFILER_NO_SAMPLES"] = "ON"
