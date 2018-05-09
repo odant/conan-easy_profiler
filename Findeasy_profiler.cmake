@@ -44,7 +44,7 @@ if(EASY_PROFILER_FOUND AND NOT TARGET easy_profiler)
     )
 
     if(WIN32)
-        set_property(TARGET easy_profiler APPEND PROPERTY INTERFACE_LINK_LIBRARIES "ws2_32", "psapi")
+        set_property(TARGET easy_profiler APPEND PROPERTY INTERFACE_LINK_LIBRARIES "ws2_32" "psapi")
     endif()
 
     mark_as_advanced(EASY_PROFILER_INCLUDE_DIR EASY_PROFILER_LIBRARY)
