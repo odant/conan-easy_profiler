@@ -11,7 +11,7 @@
 #include <thread>
 
 
-const std::size_t OBJECTS = 1000;
+const std::size_t OBJECTS = 100;
 
 
 void modellingWorker(const char* threadName) {
