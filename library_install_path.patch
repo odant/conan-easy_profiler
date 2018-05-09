@@ -1,0 +1,18 @@
+diff --git a/src/easy_profiler_core/CMakeLists.txt b/src/easy_profiler_core/CMakeLists.txt
+index 1d1b08e..960c682 100644
+--- a/src/easy_profiler_core/CMakeLists.txt
++++ b/src/easy_profiler_core/CMakeLists.txt
+@@ -299,8 +299,12 @@ install(
+     easy_profiler
+     EXPORT
+     ${targets_export_name}
+-    DESTINATION
++    RUNTIME DESTINATION
+     bin
++    LIBRARY DESTINATION
++    lib
++    ARCHIVE DESTINATION
++    lib
+     INCLUDES DESTINATION "${include_install_dir}"
+ )
+ 

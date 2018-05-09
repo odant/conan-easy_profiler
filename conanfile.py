@@ -2,7 +2,8 @@
 # Dmitriy Vetutnev, Odant, 2018
 
 
-from conans import ConanFile, CMake
+from conans import ConanFile, CMake, tools
+import os
 
 
 class easy_profiler_Conan(ConanFile):
@@ -13,42 +14,41 @@ class easy_profiler_Conan(ConanFile):
     url = "https://github.com/odant/conan-easy_profiler"
     settings = "os", "compiler", "build_type", "arch"
     generators = "cmake"
-    exports_sources = "src/*", "CMakeLists.txt", "Findeasy_profiler.cmake"
+    exports_sources = "src/*", "CMakeLists.txt", "Findeasy_profiler.cmake", "library_install_path.patch"
     no_copy_source = True
     build_policy = "missing"
     
     def configure(self):
         if self.settings.compiler.get_safe("libcxx") == "libstdc++":
             raise Exception("This package is only compatible with libstdc++11")
-            
+
+    def source(self):
+        tools.patch(patch_file="library_install_path.patch")
+
     def build(self):
         cmake = CMake(self)
         if self.settings.compiler != "Visual Studio":
             cmake.verbose = True
+        cmake.definitions["CMAKE_INSTALL_PREFIX"] = self.package_folder
         cmake.definitions["BUILD_SHARED_LIBS"] = "OFF"
         cmake.definitions["EASY_OPTION_PRETTY_PRINT"] = "ON"
         cmake.definitions["EASY_PROFILER_NO_GUI"] = "ON"
         cmake.definitions["EASY_PROFILER_NO_SAMPLES"] = "ON"
         cmake.configure()
         cmake.build()
+        cmake.install()
 
     def package(self):
         # CMake script
+        tools.rmdir(os.path.join(self.package_folder, "lib", "cmake"))
         self.copy("Findeasy_profiler.cmake", dst=".", src=".", keep_path=False)
-        # Headers
-        self.copy("*.h", dst="include", src="src/easy_profiler_core/include", keep_path=True)
-        # Libraries
-        self.copy("*easy_profiler.lib", dst="lib", keep_path=False)
-        self.copy("*easy_profiler.a", dst="lib", keep_path=False)
         # PDB
-        self.copy("easy_profiler.pdb", dst="bin", src="lib", keep_path=False)
-        self.copy("profiler_converter.pdb", dst="bin", src="bin", keep_path=False)
+        #self.copy("easy_profiler.pdb", dst="bin", src="lib", keep_path=False)
+        #self.copy("profiler_converter.pdb", dst="bin", src="bin", keep_path=False)
         # Convertor to JSON
-        self.copy("profiler_converter.exe", dst="bin", src="bin", keep_path=False)
-        self.copy("profiler_converter", dst="bin", src="bin", keep_path=False)
-        # License
-        self.copy("LICENSE*", dst=".", src="src", keep_path=False)
-        
+        #self.copy("profiler_converter.exe", dst="bin", src="bin", keep_path=False)
+        #self.copy("profiler_converter", dst="bin", src="bin", keep_path=False)
+
     def package_info(self):
         # Libraries
         self.cpp_info.libs = ["easy_profiler"]
