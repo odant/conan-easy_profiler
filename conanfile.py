@@ -41,6 +41,9 @@ class easy_profiler_Conan(ConanFile):
         self.copy("*easy_profiler.a", dst="lib", keep_path=False)
         # PDB
         self.copy("easy_profiler.pdb", dst="bin", src="lib", keep_path=False)
+        # Convertor to JSON
+        self.copy("profiler_converter.exe", dst="bin", src="bin", keep_path=False)
+        self.copy("profiler_converter", dst="bin", src="bin", keep_path=False)
         # License
         self.copy("LICENSE*", dst=".", src="src", keep_path=False)
         

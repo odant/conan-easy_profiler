@@ -17,6 +17,7 @@ class GoogletestTestConan(ConanFile):
 
     def imports(self):
         self.copy("*.pdb", dst="bin", src="bin")
+        self.copy("profiler_converter", dst="bin", src="bin")
 
     def test(self):
         if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":

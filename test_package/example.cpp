@@ -78,7 +78,7 @@ int main(int, char**) {
 
     std::cout << "Elapsed time: " << elapsed.count() << " usec" << std::endl;
 
-    auto blocks_count = profiler::dumpBlocksToFile("test.prof");
+    auto blocks_count = profiler::dumpBlocksToFile("example.prof");
 
     std::cout << "Blocks count: " << blocks_count << std::endl;
     
