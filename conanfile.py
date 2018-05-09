@@ -2,7 +2,7 @@
 # Dmitriy Vetutnev, Odant, 2018
 
 
-from conans import ConanFile, CMake, tools
+from conans import ConanFile, CMake
 
 
 class easy_profiler_Conan(ConanFile):
@@ -13,7 +13,7 @@ class easy_profiler_Conan(ConanFile):
     url = "https://github.com/odant/conan-easy_profiler"
     settings = "os", "compiler", "build_type", "arch"
     generators = "cmake"
-    exports_sources = "src/*", "CMakeLists.txt", "disable-profiler_gui.patch"
+    exports_sources = "src/*", "CMakeLists.txt"
     no_copy_source = True
     build_policy = "missing"
     
