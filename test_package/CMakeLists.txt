@@ -31,3 +31,17 @@ add_test(
 )
 set_property(TEST example_print_result PROPERTY DEPENDS example_CONAN_PKG)
 
+
+# easy_profiler imported targets
+
+find_package(easy_profiler REQUIRED)
+
+add_executable(example example.cpp)
+target_link_libraries(example easy_profiler)
+add_test(
+    NAME example
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    COMMAND example
+)
+set_property(TEST example PROPERTY TIMEOUT 30)
+

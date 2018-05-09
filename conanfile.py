@@ -13,7 +13,7 @@ class easy_profiler_Conan(ConanFile):
     url = "https://github.com/odant/conan-easy_profiler"
     settings = "os", "compiler", "build_type", "arch"
     generators = "cmake"
-    exports_sources = "src/*", "CMakeLists.txt"
+    exports_sources = "src/*", "CMakeLists.txt", "Findeasy_profiler.cmake"
     no_copy_source = True
     build_policy = "missing"
     
@@ -33,6 +33,8 @@ class easy_profiler_Conan(ConanFile):
         cmake.build()
 
     def package(self):
+        # CMake script
+        self.copy("Findeasy_profiler.cmake", dst=".", src=".", keep_path=False)
         # Headers
         self.copy("*.h", dst="include", src="src/easy_profiler_core/include", keep_path=True)
         # Libraries
