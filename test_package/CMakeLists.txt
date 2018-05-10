@@ -24,13 +24,6 @@ add_test(
 )
 set_property(TEST example_CONAN_PKG PROPERTY TIMEOUT 30)
 
-add_test(
-    NAME example_print_result
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    COMMAND profiler_converter example.prof example.json
-)
-set_property(TEST example_print_result PROPERTY DEPENDS example_CONAN_PKG)
-
 
 # easy_profiler imported targets
 

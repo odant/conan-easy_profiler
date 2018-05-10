@@ -14,7 +14,7 @@ class easy_profiler_Conan(ConanFile):
     url = "https://github.com/odant/conan-easy_profiler"
     settings = "os", "compiler", "build_type", "arch"
     generators = "cmake"
-    exports_sources = "src/*", "CMakeLists.txt", "Findeasy_profiler.cmake", "library_install_path.patch"
+    exports_sources = "src/*", "CMakeLists.txt", "Findeasy_profiler.cmake", "library_install_path.patch", "disable_converter.patch"
     no_copy_source = True
     build_policy = "missing"
     
@@ -24,6 +24,7 @@ class easy_profiler_Conan(ConanFile):
 
     def source(self):
         tools.patch(patch_file="library_install_path.patch")
+        tools.patch(patch_file="disable_converter.patch")
 
     def build(self):
         cmake = CMake(self)
@@ -43,7 +44,7 @@ class easy_profiler_Conan(ConanFile):
         tools.rmdir(os.path.join(self.package_folder, "lib", "cmake"))
         self.copy("Findeasy_profiler.cmake", dst=".", src=".", keep_path=False)
         # PDB
-        #self.copy("easy_profiler.pdb", dst="bin", src="lib", keep_path=False)
+        self.copy("easy_profiler.pdb", dst="bin", src="lib", keep_path=False)
         #self.copy("profiler_converter.pdb", dst="bin", src="bin", keep_path=False)
         # Convertor to JSON
         #self.copy("profiler_converter.exe", dst="bin", src="bin", keep_path=False)
