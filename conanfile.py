@@ -52,14 +52,38 @@ class easy_profiler_Conan(ConanFile):
         cmake = CMake(self)
         if self.settings.compiler != "Visual Studio":
             cmake.verbose = True
+        #
         cmake.definitions["CMAKE_INSTALL_PREFIX"] = self.package_folder
         cmake.definitions["BUILD_SHARED_LIBS"] = "OFF"
         cmake.definitions["EASY_OPTION_PRETTY_PRINT"] = "ON"
-        cmake.definitions["EASY_PROFILER_NO_GUI"] = "ON"
         cmake.definitions["EASY_PROFILER_NO_SAMPLES"] = "ON"
+        if not self.options.gui:
+            cmake.definitions["EASY_PROFILER_NO_GUI"] = "ON"
+        else:
+            cmake.definitions["EASY_PROFILER_NO_GUI"] = "OFF"
+            cmake.definitions["CMAKE_PREFIX_PATH"] = self._get_qt_path()
+        #
         cmake.configure()
         cmake.build()
         cmake.install()
+
+    def _get_qt_path(self):
+        qt_path = os.getenv("QT_PATH")
+        if qt_path is None:
+            raise Excpetion("Please set QT_PATH environment variable!")
+        if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
+            toolkit = {
+                "14": "msvc2015",
+                "15": "msvc2017"
+            }.get(str(self.settings.compiler.version))
+            toolkit += {
+                "x86_64": "_64"
+            }.get(str(self.settings.arch))
+            qt_path = os.path.join(qt_path, toolkit)
+            qt_path.replace("\\", "/")
+        else:
+            raise Excpetion("Not released!")
+        return qt_path
 
     def package(self):
         # CMake script
