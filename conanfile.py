@@ -91,6 +91,7 @@ class easy_profiler_Conan(ConanFile):
         self.copy("Findeasy_profiler.cmake", dst=".", src=".", keep_path=False)
         # PDB
         self.copy("easy_profiler.pdb", dst="bin", src="lib", keep_path=False)
+        self.copy("profiler_gui.pdb", dst="bin", src="bin", keep_path=False)
         # Manual packing headers in stub-mode
         if self.options.stub:
             self.copy("*.h", dst="include", src="src/easy_profiler_core/include", keep_path=True)
