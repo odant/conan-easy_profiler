@@ -19,7 +19,8 @@ class easy_profiler_Conan(ConanFile):
         "arch": ["x86_64", "x86", "mips"]
     }
     options = {
-        "stub": [False, True]
+        "stub": [False, True],
+        "gui": [False, True]
     }
     default_options = "stub=False"
     generators = "cmake"
@@ -38,6 +39,8 @@ class easy_profiler_Conan(ConanFile):
             self.options.stub = True
         if self.options.stub:
             self.output.warn("Stub-mode, not real library!")
+            if self.options.gui:
+                raise Exception("GUI not supported in stub-mode!")
 
     def source(self):
         tools.patch(patch_file="disable_converter.patch")
