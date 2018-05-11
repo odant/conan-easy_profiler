@@ -11,7 +11,7 @@
 #include <thread>
 
 
-const std::size_t OBJECTS = 100;
+const std::size_t OBJECTS = 1000;
 
 
 void modellingWorker(const char* threadName) {
@@ -25,7 +25,7 @@ void modellingWorker(const char* threadName) {
     }
 
     {
-        EASY_BLOCK("Collisions");
+        EASY_BLOCK("Collisions", profiler::ON, profiler::colors::Red);
         
         volatile int i, j;
         volatile double dist;
