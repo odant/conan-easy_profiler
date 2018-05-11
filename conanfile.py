@@ -45,10 +45,6 @@ class easy_profiler_Conan(ConanFile):
         self.copy("Findeasy_profiler.cmake", dst=".", src=".", keep_path=False)
         # PDB
         self.copy("easy_profiler.pdb", dst="bin", src="lib", keep_path=False)
-        #self.copy("profiler_converter.pdb", dst="bin", src="bin", keep_path=False)
-        # Convertor to JSON
-        #self.copy("profiler_converter.exe", dst="bin", src="bin", keep_path=False)
-        #self.copy("profiler_converter", dst="bin", src="bin", keep_path=False)
 
     def package_info(self):
         # Libraries
