@@ -37,7 +37,7 @@ set_property(TEST example PROPERTY TIMEOUT 30)
 add_executable(example_CONAN_PKG example.cpp)
 target_link_libraries(example_CONAN_PKG CONAN_PKG::easy_profiler)
 if(EASY_PROFILER_STUB_MODE)
-    target_link_libraries(example Threads::Threads)
+    target_link_libraries(example_CONAN_PKG Threads::Threads)
 endif()
 add_test(
     NAME example_CONAN_PKG
