@@ -22,7 +22,7 @@ class easy_profiler_Conan(ConanFile):
         "stub": [False, True],
         "gui": [False, True]
     }
-    default_options = "stub=False"
+    default_options = "stub=False", "gui=False"
     generators = "cmake"
     exports_sources = "src/*", "CMakeLists.txt", "Findeasy_profiler.cmake", "disable_converter.patch", "core_install.patch"
     no_copy_source = True
