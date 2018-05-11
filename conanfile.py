@@ -12,8 +12,15 @@ class easy_profiler_Conan(ConanFile):
     license = "MIT https://opensource.org/licenses/MIT"
     description = "Lightweight cross-platform profiler library for C++"
     url = "https://github.com/odant/conan-easy_profiler"
-    settings = "os", "compiler", "build_type", "arch"
-    options = {"stub": [False, True]}
+    settings = {
+        "os": ["Windows", "Linux"],
+        "compiler": ["Visual Studio", "gcc"],
+        "build_type": ["Release", "Debug"],
+        "arch": ["x86_64", "x86", "mips"]
+    }
+    options = {
+        "stub": [False, True]
+    }
     default_options = "stub=False"
     generators = "cmake"
     exports_sources = "src/*", "CMakeLists.txt", "Findeasy_profiler.cmake", "disable_converter.patch", "core_install.patch"
@@ -23,6 +30,14 @@ class easy_profiler_Conan(ConanFile):
     def configure(self):
         if self.settings.compiler.get_safe("libcxx") == "libstdc++":
             raise Exception("This package is only compatible with libstdc++11")
+        # Auto stub-mode
+        toolset = str(self.settings.compiler.get_safe("toolset"))
+        if toolset.endswith("_xp"):
+            self.options.stub = True
+        if self.settings.arch == "mips":
+            self.options.stub = True
+        if self.options.stub:
+            self.output.warn("Stub-mode, not real library!")
 
     def source(self):
         tools.patch(patch_file="disable_converter.patch")
