@@ -70,14 +70,14 @@ class easy_profiler_Conan(ConanFile):
             tools.save(os.path.join(self.package_folder, "stub"), "")
 
     def package_info(self):
-        # Libraries
         if not self.options.stub:
+            # Libraries
             self.cpp_info.libs = ["easy_profiler"]
             if self.settings.os == "Windows":
                 self.cpp_info.libs.extend(["ws2_32", "psapi"])
             else:
                 self.cpp_info.libs.append("pthread")
-        # Defines
+            # Defines
             self.cpp_info.defines = [
                 "BUILD_WITH_EASY_PROFILER=1",
                 "EASY_PROFILER_STATIC=1",
