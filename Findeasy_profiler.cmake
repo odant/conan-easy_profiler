@@ -2,6 +2,8 @@
 # Dmitriy Vetutnev, Odant, 2018
 
 
+option(EASY_PROFILER_STUB_MODE "Stub mode" OFF)
+
 find_path(EASY_PROFILER_INCLUDE_DIR
     NAMES easy/profiler.h
     PATHS ${CONAN_INCLUDE_DIRS_EASY_PROFILER}
@@ -15,7 +17,8 @@ find_library(EASY_PROFILER_LIBRARY
 )
 if(EXISTS ${CONAN_EASY_PROFILER_ROOT}/stub)
     message(STATUS "ESAY_PROFILER in stub-mode")
-    set(EASY_PROFILER_LIBRARY " ")
+    set(EASY_PROFILER_STUB_MODE ON)
+    unset(EASY_PROFILER_LIBRARY)
 endif()
 
 if(EASY_PROFILER_INCLUDE_DIR)
@@ -28,27 +31,47 @@ if(EASY_PROFILER_INCLUDE_DIR)
 endif()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(easy_profiler
-    REQUIRED_VARS EASY_PROFILER_INCLUDE_DIR EASY_PROFILER_LIBRARY
-    VERSION_VAR EASY_PROFILER_VERSION_STRING
-)
+if(NOT EASY_PROFILER_STUB_MODE)
+    find_package_handle_standard_args(easy_profiler
+        REQUIRED_VARS EASY_PROFILER_INCLUDE_DIR EASY_PROFILER_LIBRARY
+        VERSION_VAR EASY_PROFILER_VERSION_STRING
+    )
+else()
+    find_package_handle_standard_args(easy_profiler
+        REQUIRED_VARS EASY_PROFILER_INCLUDE_DIR
+        VERSION_VAR EASY_PROFILER_VERSION_STRING
+    )
+endif()
 
 if(EASY_PROFILER_FOUND AND NOT TARGET easy_profiler)
 
-    include(CMakeFindDependencyMacro)
-    find_dependency(Threads)
+    if(NOT EASY_PROFILER_STUB_MODE)
 
-    add_library(easy_profiler UNKNOWN IMPORTED)
+        include(CMakeFindDependencyMacro)
+        find_dependency(Threads)
 
-    set_target_properties(easy_profiler PROPERTIES
-        IMPORTED_LOCATION "${EASY_PROFILER_LIBRARY}"
-        INTERFACE_INCLUDE_DIRECTORIES "${EASY_PROFILER_INCLUDE_DIR}"
-        INTERFACE_COMPILE_DEFINITIONS "${CONAN_COMPILE_DEFINITIONS_EASY_PROFILER}"
-        INTERFACE_LINK_LIBRARIES Threads::Threads
-    )
+        add_library(easy_profiler UNKNOWN IMPORTED)
 
-    if(WIN32)
-        set_property(TARGET easy_profiler APPEND PROPERTY INTERFACE_LINK_LIBRARIES "ws2_32" "psapi")
+        set_target_properties(easy_profiler PROPERTIES
+            IMPORTED_LOCATION "${EASY_PROFILER_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${EASY_PROFILER_INCLUDE_DIR}"
+            INTERFACE_COMPILE_DEFINITIONS "${CONAN_COMPILE_DEFINITIONS_EASY_PROFILER}"
+            INTERFACE_LINK_LIBRARIES Threads::Threads
+        )
+
+        if(WIN32)
+            set_property(TARGET easy_profiler APPEND PROPERTY INTERFACE_LINK_LIBRARIES "ws2_32" "psapi")
+        endif()
+
+    else()
+
+        add_library(easy_profiler INTERFACE IMPORTED)
+
+        set_target_properties(easy_profiler PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${EASY_PROFILER_INCLUDE_DIR}"
+            INTERFACE_COMPILE_DEFINITIONS "${CONAN_COMPILE_DEFINITIONS_EASY_PROFILER}"
+        )
+
     endif()
 
     mark_as_advanced(EASY_PROFILER_INCLUDE_DIR EASY_PROFILER_LIBRARY)
