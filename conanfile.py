@@ -24,7 +24,7 @@ class easy_profiler_Conan(ConanFile):
     }
     default_options = "stub=False"
     generators = "cmake"
-    exports_sources = "src/*", "CMakeLists.txt", "Findeasy_profiler.cmake", "disable_converter.patch", "core_install.patch"
+    exports_sources = "src/*", "CMakeLists.txt", "Findeasy_profiler.cmake", "disable_converter.patch", "core_install.patch", "gui_install.patch"
     no_copy_source = True
     build_policy = "missing"
 
@@ -45,6 +45,7 @@ class easy_profiler_Conan(ConanFile):
     def source(self):
         tools.patch(patch_file="disable_converter.patch")
         tools.patch(patch_file="core_install.patch")
+        tools.patch(patch_file="gui_install.patch")
 
     def build(self):
         if self.options.stub:
@@ -53,6 +54,8 @@ class easy_profiler_Conan(ConanFile):
         if self.settings.compiler != "Visual Studio":
             cmake.verbose = True
         #
+        if self.settings.compiler == "Visual Studio":
+            cmake.definitions["CMAKE_BUILD_TYPE"] = self.settings.build_type
         cmake.definitions["CMAKE_INSTALL_PREFIX"] = self.package_folder
         cmake.definitions["BUILD_SHARED_LIBS"] = "OFF"
         cmake.definitions["EASY_OPTION_PRETTY_PRINT"] = "ON"
@@ -70,7 +73,7 @@ class easy_profiler_Conan(ConanFile):
     def _get_qt_path(self):
         qt_path = os.getenv("QT_PATH")
         if qt_path is None:
-            raise Excpetion("Please set QT_PATH environment variable!")
+            raise Exception("Please set QT_PATH environment variable!")
         if self.settings.os == "Windows" and self.settings.compiler == "Visual Studio":
             toolkit = {
                 "14": "msvc2015",
@@ -82,7 +85,7 @@ class easy_profiler_Conan(ConanFile):
             qt_path = os.path.join(qt_path, toolkit)
             qt_path.replace("\\", "/")
         else:
-            raise Excpetion("Not released!")
+            raise Exception("Not released!")
         return qt_path
 
     def package(self):
@@ -96,6 +99,10 @@ class easy_profiler_Conan(ConanFile):
         if self.options.stub:
             self.copy("*.h", dst="include", src="src/easy_profiler_core/include", keep_path=True)
             tools.save(os.path.join(self.package_folder, "stub"), "")
+
+    def deploy(self):
+        if self.options.gui:
+            self.copy("*", dst=".", src="bin", keep_path=True)
 
     def package_info(self):
         if not self.options.stub:

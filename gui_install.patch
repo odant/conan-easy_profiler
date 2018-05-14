@@ -1,0 +1,60 @@
+diff --git a/src/profiler_gui/CMakeLists.txt b/src/profiler_gui/CMakeLists.txt
+index 2068234..afbf3f8 100644
+--- a/src/profiler_gui/CMakeLists.txt
++++ b/src/profiler_gui/CMakeLists.txt
+@@ -63,16 +63,54 @@ if (Qt5Widgets_FOUND)
+         target_compile_definitions(profiler_gui PRIVATE -DSTRSAFE_NO_DEPRECATE)
+     endif ()
+ 
++    include(InstallRequiredSystemLibraries)
++
+     install(
+         TARGETS
+         profiler_gui
++        BUNDLE DESTINATION .
+         RUNTIME
+         DESTINATION
+         bin
+     )
+ 
+     set_property(TARGET profiler_gui PROPERTY INSTALL_RPATH_USE_LINK_PATH TRUE)
++
++    if (WIN32)
++        set(QT_DLL_SUFFIX ".dll")
++        if (${CMAKE_BUILD_TYPE} STREQUAL "Debug")
++            set(QT_DLL_SUFFIX "d.dll")
++        endif()
++    else ()
++        set(QT_DLL_SUFFIX ".so")
++    endif()
++
++    get_target_property(QtCore_LOCATION Qt5::Core LOCATION)
++    get_filename_component(QT_DLL_DIR ${QtCore_LOCATION} PATH)
++
++    install(PROGRAMS
++        "${QT_DLL_DIR}/Qt5Core${QT_DLL_SUFFIX}"
++        "${QT_DLL_DIR}/Qt5Gui${QT_DLL_SUFFIX}"
++        "${QT_DLL_DIR}/Qt5Svg${QT_DLL_SUFFIX}"
++        "${QT_DLL_DIR}/Qt5Widgets${QT_DLL_SUFFIX}"
++        DESTINATION bin
++    )
++    install(PROGRAMS
++        "${QT_DLL_DIR}/../plugins/platforms/qminimal${QT_DLL_SUFFIX}"
++        "${QT_DLL_DIR}/../plugins/platforms/qoffscreen${QT_DLL_SUFFIX}"
++        "${QT_DLL_DIR}/../plugins/platforms/qwindows${QT_DLL_SUFFIX}"
++        DESTINATION bin/platforms
++    )
++    install(PROGRAMS
++        "${QT_DLL_DIR}/../plugins/iconengines/qsvgicon${QT_DLL_SUFFIX}"
++        DESTINATION bin/iconengines
++    )
++    install(PROGRAMS
++        "${QT_DLL_DIR}/../plugins/imageformats/qsvg${QT_DLL_SUFFIX}"
++        DESTINATION bin/imageformats
++    )
++
+ else ()
+-    message(STATUS "INFO\n\n\tQt5 not found! Generating EasyProfiler projects without GUI.\n")
++    message(FATAL_ERROR "INFO\n\n\tQt5 not found! Generating EasyProfiler projects without GUI.\n")
+ endif ()
+ 
