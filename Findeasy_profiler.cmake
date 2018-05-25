@@ -1,4 +1,4 @@
-# Intel TBB Conan package
+# easy_profiler Conan package
 # Dmitriy Vetutnev, Odant, 2018
 
 
@@ -74,7 +74,7 @@ if(EASY_PROFILER_FOUND AND NOT TARGET easy_profiler)
 
     endif()
 
-    mark_as_advanced(EASY_PROFILER_INCLUDE_DIR EASY_PROFILER_LIBRARY)
+    mark_as_advanced(EASY_PROFILER_INCLUDE_DIR EASY_PROFILER_LIBRARY EASY_PROFILER_STUB_MODE)
 
     set(EASY_PROFILER_INCLUDE_DIRS ${EASY_PROFILER_INCLUDE_DIR})
     set(EASY_PROFILER_LIBRARIES ${EASY_PROFILER_LIBRARY})

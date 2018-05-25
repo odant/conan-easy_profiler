@@ -124,5 +124,5 @@ class easy_profiler_Conan(ConanFile):
             if self.settings.os == "Windows":
                 self.cpp_info.defines.extend([
                     "EASY_OPTION_EVENT_TRACING_ENABLED=1",
-                    "DEASY_OPTION_LOW_PRIORITY_EVENT_TRACING=1"
+                    "EASY_OPTION_LOW_PRIORITY_EVENT_TRACING=1"
                 ])
