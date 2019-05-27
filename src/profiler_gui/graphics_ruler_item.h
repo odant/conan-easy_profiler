@@ -1,17 +1,17 @@
 /************************************************************************
-* file name         : easy_qtimer.h
-* ----------------- : 
-* creation time     : 2016/12/05
+* file name         : graphics_ruler_item.h
+* ----------------- :
+* creation time     : 2016/09/15
 * author            : Victor Zarubkin
 * email             : v.s.zarubkin@gmail.com
-* ----------------- : 
-* description       : This file contains declaration of Timer class used to
-*                   : connect QTimer to non-QObject classes.
-* ----------------- : 
-* change log        : * 2016/12/05 Victor Zarubkin: Initial commit.
+* ----------------- :
+* description       : The file contains declaration of GraphicsRulerItem - an item
+*                   : used to display selected interval on graphics scene.
+* ----------------- :
+* change log        : * 2016/09/15 Victor Zarubkin: moved sources from blocks_graphics_view.h
 *                   :
-*                   : * 
-* ----------------- : 
+*                   : *
+* ----------------- :
 * license           : Lightweight profiler library for c++
 *                   : Copyright(C) 2016-2018  Sergey Yagovtsev, Victor Zarubkin
 *                   :
@@ -53,46 +53,119 @@
 *                   : limitations under the License.
 ************************************************************************/
 
-#ifndef EASY__QTIMER__H
-#define EASY__QTIMER__H
+#ifndef GRAPHICS_RULER_ITEM_H
+#define GRAPHICS_RULER_ITEM_H
 
-#include <QTimer>
-#include <functional>
+#include <QGraphicsItem>
+#include <QRectF>
+#include <QPolygonF>
+#include <QColor>
 
 //////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
 
-class Timer : public QObject
+class QWidget;
+class QPainter;
+class QStyleOptionGraphicsItem;
+class BlocksGraphicsView;
+
+class GraphicsRulerItem : public QGraphicsItem
 {
-    Q_OBJECT
+    typedef QGraphicsItem Parent;
+    typedef GraphicsRulerItem This;
 
-private:
-
-    QTimer                    m_timer;
-    ::std::function<void()> m_handler;
+    QPolygonF  m_indicator; ///< Indicator displayed when this chrono item is out of screen (displaying only for main item)
+    QRectF  m_boundingRect; ///< boundingRect (see QGraphicsItem)
+    QColor         m_color; ///< Color of the item
+    qreal  m_left, m_right; ///< Left and right bounds of the selection zone
+    bool           m_bMain; ///< Is this chronometer main (true, by default)
+    bool        m_bReverse; ///< 
+    bool m_bHoverIndicator; ///< Mouse hover above indicator
+    bool  m_bHoverLeftBorder;
+    bool m_bHoverRightBorder;
 
 public:
 
-    explicit Timer();
-    explicit Timer(std::function<void()>&& handler, bool signleShot = false);
-    ~Timer() override;
+    explicit GraphicsRulerItem(bool _main = true);
+    virtual ~GraphicsRulerItem();
 
-    void setHandler(std::function<void()>&& handler);
+    // Public virtual methods
 
-    void setSignleShot(bool singleShot);
-    bool isSingleShot() const;
+    QRectF boundingRect() const override;
+    void paint(QPainter* _painter, const QStyleOptionGraphicsItem* _option, QWidget* _widget = nullptr) override;
 
-    void setInterval(int msec);
-    void start(int msec);
-    void start();
-    void stop();
-    bool isActive() const;
+public:
 
-private slots:
+    // Public non-virtual methods
 
-    void onTimeout();
+    void hide();
 
-}; // END of class Timer.
+    void setColor(const QColor& _color);
+
+    void setBoundingRect(qreal x, qreal y, qreal w, qreal h);
+    void setBoundingRect(const QRectF& _rect);
+
+    void setLeftRight(qreal _left, qreal _right);
+
+    void setReverse(bool _reverse);
+
+    void setHoverIndicator(bool _hover);
+
+    bool indicatorContains(const QPointF& _pos) const;
+
+    void setHoverLeft(bool _hover);
+    void setHoverRight(bool _hover);
+
+    bool hoverLeft(qreal _x) const;
+    bool hoverRight(qreal _x) const;
+
+    QPointF toItem(const QPointF& _pos) const;
+    qreal toItem(qreal _x) const;
+
+    inline bool hoverIndicator() const
+    {
+        return m_bHoverIndicator;
+    }
+
+    inline bool hoverLeft() const
+    {
+        return m_bHoverLeftBorder;
+    }
+
+    inline bool hoverRight() const
+    {
+        return m_bHoverRightBorder;
+    }
+
+    inline bool reverse() const
+    {
+        return m_bReverse;
+    }
+
+    inline qreal left() const
+    {
+        return m_left;
+    }
+
+    inline qreal right() const
+    {
+        return m_right;
+    }
+
+    inline qreal width() const
+    {
+        return m_right - m_left;
+    }
+
+private:
+
+    ///< Returns pointer to the BlocksGraphicsView widget.
+    const BlocksGraphicsView* view() const;
+    BlocksGraphicsView* view();
+
+}; // END of class GraphicsRulerItem.
 
 //////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////
 
-#endif // EASY__QTIMER__H
+#endif // GRAPHICS_RULER_ITEM_H

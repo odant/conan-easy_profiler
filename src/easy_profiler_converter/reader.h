@@ -40,8 +40,8 @@ The Apache License, Version 2.0 (the "License");
 
 **/
 
-#ifndef EASY_PROFILER_READER_H
-#define EASY_PROFILER_READER_H
+#ifndef EASY_PROFILER_CONVERTER_READER_H
+#define EASY_PROFILER_CONVERTER_READER_H
 
 #include <vector>
 #include <sstream>
@@ -108,6 +108,8 @@ public:
 
     const descriptors_list_t& getBlockDescriptors() const;
 
+    const profiler::bookmarks_t& getBookmarks() const;
+
     /*! get thread name by Id
     \param threadId thread Id
     \return Name of thread
@@ -132,6 +134,7 @@ private:
     thread_names_t            m_threadNames; ///< [thread_id, thread_name]
     context_switches_t    m_contextSwitches; ///< context switches info
     descriptors_list_t   m_blockDescriptors; ///< block descriptors
+    profiler::bookmarks_t       m_bookmarks; ///< User bookmarks
     uint32_t                      m_version; ///< .prof file version
 
 }; // end of class FileReader.
@@ -140,4 +143,4 @@ private:
 
 } // end of namespace profiler.
 
-#endif // EASY_PROFILER_READER_H
+#endif // EASY_PROFILER_CONVERTER_READER_H

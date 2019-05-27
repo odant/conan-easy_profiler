@@ -20,30 +20,36 @@ if (Qt5Widgets_FOUND)
         blocks_graphics_view.cpp
         blocks_tree_widget.h
         blocks_tree_widget.cpp
+        bookmarks_editor.h
+        bookmarks_editor.cpp
         common_functions.h
         common_functions.cpp
         common_types.h
         descriptors_tree_widget.h
         descriptors_tree_widget.cpp
-        easy_chronometer_item.h
-        easy_chronometer_item.cpp
-        easy_frame_rate_viewer.h
-        easy_frame_rate_viewer.cpp
-        easy_graphics_item.h
-        easy_graphics_item.cpp
-        easy_graphics_scrollbar.h
-        easy_graphics_scrollbar.cpp
-        easy_qtimer.h
-        easy_qtimer.cpp
+        dialog.h
+        dialog.cpp
+        fps_widget.h
+        fps_widget.cpp
         globals.h
         globals.cpp
         globals_qobjects.cpp
+        graphics_block_item.h
+        graphics_block_item.cpp
         graphics_image_item.h
         graphics_image_item.cpp
+        graphics_ruler_item.h
+        graphics_ruler_item.cpp
+        graphics_scrollbar.h
+        graphics_scrollbar.cpp
         graphics_slider_area.h
         graphics_slider_area.cpp
         main_window.h
         main_window.cpp
+        round_progress_widget.h
+        round_progress_widget.cpp
+        timer.h
+        timer.cpp
         thread_pool.h
         thread_pool.cpp
         thread_pool_task.h
@@ -52,6 +58,8 @@ if (Qt5Widgets_FOUND)
         tree_widget_item.cpp
         tree_widget_loader.h
         tree_widget_loader.cpp
+        window_header.h
+        window_header.cpp
         resources.qrc
         resources.rc
     )

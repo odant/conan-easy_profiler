@@ -68,11 +68,17 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////
+#define EASY_INIT_ATOMIC(v) v
+
+#if defined (_WIN32)
+#undef EASY_INIT_ATOMIC
+#define EASY_INIT_ATOMIC(v) {v}
+#endif
 
 TreeWidgetLoader::TreeWidgetLoader()
-    : m_bDone(ATOMIC_VAR_INIT(false))
-    , m_bInterrupt(ATOMIC_VAR_INIT(false))
-    , m_progress(ATOMIC_VAR_INIT(0))
+    : m_bDone(EASY_INIT_ATOMIC(false))
+    , m_bInterrupt(EASY_INIT_ATOMIC(false))
+    , m_progress(EASY_INIT_ATOMIC(0))
     , m_mode(TreeMode::Full)
 {
 }
@@ -301,7 +307,7 @@ void TreeWidgetLoader::setTreeInternal2(const ::profiler::timestamp_t& _beginTim
         const auto endTime = gui_block.tree.node->end();
         if (startTime > _right || endTime < _left)
         {
-            setProgress((90 * ++i) / total);
+            setProgress((95 * ++i) / total);
             continue;
         }
 
@@ -502,7 +508,7 @@ void TreeWidgetLoader::setTreeInternal2(const ::profiler::timestamp_t& _beginTim
             delete item;
         }
 
-        setProgress((90 * ++i) / total);
+        setProgress((95 * ++i) / total);
     }
 
     i = 0;
@@ -526,7 +532,7 @@ void TreeWidgetLoader::setTreeInternal2(const ::profiler::timestamp_t& _beginTim
             delete item;
         }
 
-        setProgress(90 + (10 * ++i) / total);
+        setProgress(95 + (5 * ++i) / total);
     }
 
     setDone();

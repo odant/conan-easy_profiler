@@ -204,7 +204,7 @@ GraphicsSliderArea::GraphicsSliderArea(QWidget* _parent)
     scene()->addItem(m_selectionIndicator);
 
     m_selectionIndicator->setPos(0, 0);
-    m_selectionIndicator->setColor(0x40000000 | profiler_gui::CHRONOMETER_COLOR.rgba());
+    m_selectionIndicator->setColor(0x40000000 | profiler_gui::RULER_COLOR.rgba());
     m_selectionIndicator->hide();
 
     m_slider = new GraphicsSliderItem(6, true);
@@ -219,8 +219,8 @@ GraphicsSliderArea::GraphicsSliderArea(QWidget* _parent)
 
     auto globalEvents = &EASY_GLOBALS.events;
     connect(globalEvents, &profiler_gui::GlobalSignals::sceneCleared, this, &This::clear);
-    connect(globalEvents, &profiler_gui::GlobalSignals::sceneVisibleRegionSizeChanged, this, &This::setSliderWidth);
-    connect(globalEvents, &profiler_gui::GlobalSignals::sceneVisibleRegionPosChanged, this, &This::setValue);
+    connect(globalEvents, &profiler_gui::GlobalSignals::sceneVisibleRegionSizeChanged, this, &This::onExternalSliderWidthChanged);
+    connect(globalEvents, &profiler_gui::GlobalSignals::sceneVisibleRegionPosChanged, this, &This::onExternalChartSliderChanged);
     connect(globalEvents, &profiler_gui::GlobalSignals::chartSliderChanged, this, &This::onExternalChartSliderChanged);
     connect(globalEvents, &profiler_gui::GlobalSignals::sceneSizeChanged, this, &This::onSceneSizeChanged);
     connect(globalEvents, &profiler_gui::GlobalSignals::lockCharts, this, &This::lock);
@@ -260,6 +260,15 @@ void GraphicsSliderArea::validateScene()
             m_slider->show();
             scene()->update();
         }
+    }
+}
+
+void GraphicsSliderArea::onExternalSliderWidthChanged(qreal _width)
+{
+    if (!m_bUpdatingPos)
+    {
+        const profiler_gui::BoolFlagGuard guard(m_bEmitChange, false);
+        setSliderWidth(_width);
     }
 }
 
@@ -360,7 +369,10 @@ void GraphicsSliderArea::setValue(qreal _value)
 
     const auto newValue = estd::clamp(m_minimumValue, _value, std::max(m_minimumValue, m_maximumValue - m_slider->width()));
     if (fabs(m_value - newValue) < 2 * std::numeric_limits<decltype(m_value)>::epsilon())
+    {
+        m_slider->setX(m_value + m_slider->halfwidth());
         return;
+    }
 
     m_value = newValue;
     m_slider->setX(m_value + m_slider->halfwidth());
@@ -539,12 +551,12 @@ void GraphicsSliderArea::wheelEvent(QWheelEvent* _event)
     {
         const auto w = m_slider->halfwidth() * (_event->delta() < 0 ? profiler_gui::SCALING_COEFFICIENT : profiler_gui::SCALING_COEFFICIENT_INV);
         setValue(mapToScene(_event->pos()).x() - m_minimumValue - w);
-        emit EASY_GLOBALS.events.chartWheeled(w * m_windowScale, _event->delta());
+        emit EASY_GLOBALS.events.chartWheeled(m_value + w * m_windowScale, _event->delta());
     }
     else
     {
         auto x = static_cast<qreal>(_event->pos().x()) / m_windowScale;
-        if (m_bBindMode)
+        if (m_bBindMode) // check m_bBindMode because it may differ from bindMode() for arbitrary value complexity chart
             x *= sliderWidth() / range();
         emit EASY_GLOBALS.events.chartWheeled(m_value + x, _event->delta());
     }
