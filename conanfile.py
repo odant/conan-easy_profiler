@@ -8,7 +8,7 @@ import os
 
 class easy_profiler_Conan(ConanFile):
     name = "easy_profiler"
-    version = "2.1.0-beta1"
+    version = "2.1.0-beta1+1"
     license = "MIT https://opensource.org/licenses/MIT"
     description = "Lightweight cross-platform profiler library for C++"
     url = "https://github.com/odant/conan-easy_profiler"
