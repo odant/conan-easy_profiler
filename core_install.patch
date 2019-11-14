@@ -2,7 +2,7 @@ diff --git a/src/easy_profiler_core/CMakeLists.txt b/src/easy_profiler_core/CMak
 index 1d1b08e..04dd5a1 100644
 --- a/src/easy_profiler_core/CMakeLists.txt
 +++ b/src/easy_profiler_core/CMakeLists.txt
-@@ -247,43 +247,10 @@ endif ()
+@@ -246,43 +246,10 @@ endif ()
  
  #########################################################################################
  # Installation:
@@ -32,13 +32,13 @@ index 1d1b08e..04dd5a1 100644
 -    "${project_config}"
 -    INSTALL_DESTINATION "${config_install_dir}"
 -)
--
--install(
+ 
+ install(
 -    FILES "${project_config}" "${version_config}"
 -    DESTINATION "${config_install_dir}"
 -)
- 
- install(
+-
+-install(
 -    DIRECTORY
 -    ${EASY_INCLUDE_DIR}
 -    DESTINATION
@@ -48,7 +48,7 @@ index 1d1b08e..04dd5a1 100644
  )
  
  install(
-@@ -295,18 +262,10 @@ install(
+@@ -294,21 +261,11 @@ install(
  )
  
  install(
@@ -56,19 +56,23 @@ index 1d1b08e..04dd5a1 100644
 -    easy_profiler
 -    EXPORT
 -    ${targets_export_name}
--    DESTINATION
--    bin
+-    LIBRARY DESTINATION lib COMPONENT Runtime
+-    ARCHIVE DESTINATION lib COMPONENT Development
+-    RUNTIME DESTINATION bin COMPONENT Runtime
+-    BUNDLE DESTINATION bin COMPONENT Runtime
+-    PUBLIC_HEADER DESTINATION include COMPONENT Development
+-    BUNDLE DESTINATION bin COMPONENT Runtime
+-)
+-
+-install(
+-    EXPORT "${targets_export_name}"
+-    DESTINATION "${config_install_dir}"
 +    TARGETS easy_profiler
 +    EXPORT ${targets_export_name}
 +    RUNTIME DESTINATION bin
 +    LIBRARY DESTINATION lib
 +    ARCHIVE DESTINATION lib
-     INCLUDES DESTINATION "${include_install_dir}"
++    INCLUDES DESTINATION "${include_install_dir}"
  )
--
--install(
--    EXPORT "${targets_export_name}"
--    DESTINATION "${config_install_dir}"
--)
--
+ 
 -target_compile_definitions(easy_profiler PUBLIC )

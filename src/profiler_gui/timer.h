@@ -1,15 +1,16 @@
 /************************************************************************
-* file name         : easy_frame_rate_viewer.cpp
-* ----------------- :
-* creation time     : 2017/04/02
+* file name         : timer.h
+* ----------------- : 
+* creation time     : 2016/12/05
 * author            : Victor Zarubkin
 * email             : v.s.zarubkin@gmail.com
-* ----------------- :
-* description       : This file contains declaration of FpsViewerWidget widget.
-* ----------------- :
-* change log        : * 2017/04/02 Victor Zarubkin: Initial commit.
+* ----------------- : 
+* description       : This file contains declaration of Timer class used to
+*                   : connect QTimer to non-QObject classes.
+* ----------------- : 
+* change log        : * 2016/12/05 Victor Zarubkin: Initial commit.
 *                   :
-*                   : *
+*                   : * 
 * ----------------- : 
 * license           : Lightweight profiler library for c++
 *                   : Copyright(C) 2016-2018  Sergey Yagovtsev, Victor Zarubkin
@@ -52,76 +53,46 @@
 *                   : limitations under the License.
 ************************************************************************/
 
-#ifndef EASY__FRAME_RATE_VIEWER__H
-#define EASY__FRAME_RATE_VIEWER__H
+#ifndef TIMER_H
+#define TIMER_H
 
-#include <QGraphicsView>
-#include <QGraphicsItem>
+#include <functional>
 #include <QTimer>
-#include <vector>
-#include <deque>
-#include <utility>
-#include <stdint.h>
 
 //////////////////////////////////////////////////////////////////////////
 
-class FpsGraphicsItem : public QGraphicsItem
-{
-    using Parent = QGraphicsItem;
-    using This = FpsGraphicsItem;
-    using FrameTimes = std::deque<std::pair<uint32_t, uint32_t> >;
-
-    std::vector<QPointF> m_points1, m_points2;
-    FrameTimes                       m_frames;
-    QRectF                     m_boundingRect;
-
-public:
-
-    explicit FpsGraphicsItem();
-    ~FpsGraphicsItem() override;
-
-    QRectF boundingRect() const override;
-    void paint(QPainter* _painter, const QStyleOptionGraphicsItem* _option, QWidget* _widget) override;
-
-    void setBoundingRect(const QRectF& _boundingRect);
-    void setBoundingRect(qreal x, qreal y, qreal w, qreal h);
-
-    void clear();
-    void addPoint(uint32_t _maxFrameTime, uint32_t _avgFrameTime);
-
-}; // END of class FpsGraphicsItem.
-
-//////////////////////////////////////////////////////////////////////////
-
-class FpsViewerWidget : public QGraphicsView
+class Timer : public QObject
 {
     Q_OBJECT
 
 private:
 
-    using Parent = QGraphicsView;
-    using This = FpsViewerWidget;
-
-    FpsGraphicsItem* m_fpsItem;
+    QTimer                    m_timer;
+    ::std::function<void()> m_handler;
 
 public:
 
-    explicit FpsViewerWidget(QWidget* _parent = nullptr);
-    ~FpsViewerWidget() override;
+    explicit Timer();
+    explicit Timer(std::function<void()>&& handler, bool signleShot = false);
+    ~Timer() override;
 
-    void resizeEvent(QResizeEvent* _event) override;
-    void hideEvent(QHideEvent* _event) override;
-    void showEvent(QShowEvent* _event) override;
-    void contextMenuEvent(QContextMenuEvent* _event) override;
-    void dragEnterEvent(QDragEnterEvent*) override {}
+    void setHandler(std::function<void()>&& handler);
 
-public slots:
+    void setSignleShot(bool singleShot);
+    bool isSingleShot() const;
 
-    void clear();
-    void addPoint(uint32_t _maxFrameTime, uint32_t _avgFrameTime);
+    void setInterval(int msec);
+    void start(int msec);
+    void start();
+    void stop();
+    bool isActive() const;
 
-}; // END of class FpsViewerWidget.
+private slots:
+
+    void onTimeout();
+
+}; // END of class Timer.
 
 //////////////////////////////////////////////////////////////////////////
 
-#endif // EASY__FRAME_RATE_VIEWER__H
+#endif // TIMER_H

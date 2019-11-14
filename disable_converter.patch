@@ -2,7 +2,7 @@ diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
 index 04d36f8..de48c1a 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
-@@ -31,7 +31,6 @@ add_subdirectory(easy_profiler_core)
+@@ -40,7 +40,6 @@ add_subdirectory(easy_profiler_core)
  if (NOT EASY_PROFILER_NO_GUI)
      add_subdirectory(profiler_gui)
  endif()

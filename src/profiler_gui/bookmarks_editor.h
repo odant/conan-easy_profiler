@@ -1,16 +1,11 @@
 /************************************************************************
-* file name         : easy_qtimer.h
+* file name         : bookmarks_editor.h
 * ----------------- :
-* creation time     : 2016/12/05
+* creation time     : 2018/06/03
 * author            : Victor Zarubkin
 * email             : v.s.zarubkin@gmail.com
 * ----------------- :
-* description       : This file contains implementation of Timer class used to
-*                   : connect QTimer to non-QObject classes.
-* ----------------- :
-* change log        : * 2016/12/05 Victor Zarubkin: Initial commit.
-*                   :
-*                   : *
+* description       : The file contains declaration of BookmarkEditor.
 * ----------------- :
 * license           : Lightweight profiler library for c++
 *                   : Copyright(C) 2016-2018  Sergey Yagovtsev, Victor Zarubkin
@@ -53,76 +48,44 @@
 *                   : limitations under the License.
 ************************************************************************/
 
-#include "easy_qtimer.h"
+#ifndef EASY_PROFILER_BOOKMARKS_EDITOR_H
+#define EASY_PROFILER_BOOKMARKS_EDITOR_H
 
-//////////////////////////////////////////////////////////////////////////
+#include <QDialog>
 
-Timer::Timer()
-    : QObject()
+class BookmarkEditor : public QDialog
 {
-    connect(&m_timer, &QTimer::timeout, this, &Timer::onTimeout);
-}
+    Q_OBJECT;
 
-Timer::Timer(std::function<void()>&& handler, bool signleShot)
-    : QObject()
-    , m_handler(std::forward<std::function<void()>&&>(handler))
-{
-    m_timer.setSingleShot(signleShot);
-    connect(&m_timer, &QTimer::timeout, this, &Timer::onTimeout);
-}
+    using This = BookmarkEditor;
+    using Parent = QDialog;
 
-Timer::~Timer()
-{
+    class QTextEdit*      m_textEdit;
+    class QPushButton* m_colorButton;
+    const size_t     m_bookmarkIndex;
+    const bool       m_isNewBookmark;
 
-}
+public:
 
-void Timer::onTimeout()
-{
-    m_handler();
-}
+    explicit BookmarkEditor(size_t bookmarkIndex, bool isNew, QWidget* parent = nullptr);
+    ~BookmarkEditor() override;
 
-void Timer::setHandler(std::function<void()>&& handler)
-{
-    m_handler = handler;
-}
+signals:
 
-void Timer::setSignleShot(bool singleShot)
-{
-    m_timer.setSingleShot(singleShot);
-}
+    void bookmarkRemoved(size_t index);
 
-bool Timer::isSingleShot() const
-{
-    return m_timer.isSingleShot();
-}
+private slots:
 
-void Timer::setInterval(int msec)
-{
-    m_timer.setInterval(msec);
-}
+    void onSaveClicked(bool);
+    void onDeleteClicked(bool);
+    void onColorButtonClicked(bool);
+    void onReject();
 
-void Timer::start(int msec)
-{
-    stop();
-    m_timer.start(msec);
-}
+private:
 
-void Timer::start()
-{
-    stop();
-    m_timer.start();
-}
+    void loadSettings();
+    void saveSettings();
 
-void Timer::stop()
-{
-    if (m_timer.isActive())
-        m_timer.stop();
-}
+}; // class BookmarkEditor.
 
-bool Timer::isActive() const
-{
-    return m_timer.isActive();
-}
-
-//////////////////////////////////////////////////////////////////////////
-
+#endif // EASY_PROFILER_BOOKMARKS_EDITOR_H

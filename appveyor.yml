@@ -8,7 +8,7 @@ environment:
 
   CONAN_DISABLE_DLL_SIGN: 1
 
-  CONAN_REFERENCE: easy_profiler/2.0.0
+  CONAN_REFERENCE: easy_profiler/2.1.0-beta1
   CONAN_USERNAME: odant
   CONAN_CHANNEL: testing
   CONAN_STABLE_CHANNEL: stable

@@ -2,3 +2,5 @@ bin
 *build*
 .*
 *.user
+/*.prof
+.idea/
