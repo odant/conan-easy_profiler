@@ -16,7 +16,7 @@ class easy_profiler_Conan(ConanFile):
         "os": ["Windows", "Linux"],
         "compiler": ["Visual Studio", "gcc"],
         "build_type": ["Release", "Debug"],
-        "arch": ["x86_64", "x86", "mips"]
+        "arch": ["x86_64", "x86", "mips", "armv7"]
     }
     options = {
         "stub": [False, True]
@@ -34,7 +34,7 @@ class easy_profiler_Conan(ConanFile):
         toolset = str(self.settings.compiler.get_safe("toolset"))
         if toolset.endswith("_xp"):
             self.options.stub = True
-        if self.settings.arch == "mips":
+        if self.settings.arch == "mips" or self.settings.arch == "armv7":
             self.options.stub = True
         if self.options.stub:
             self.output.warn("Stub-mode, not real library!")
