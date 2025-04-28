@@ -1,0 +1,10 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 2f1cfb3..a033b86 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-cmake_minimum_required(VERSION 3.0)
++cmake_minimum_required(VERSION 3.15)
+ project(easy_profiler CXX)
+ 
+ set_property(GLOBAL PROPERTY USE_FOLDERS ON)

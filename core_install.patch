@@ -1,7 +1,7 @@
 diff --git a/src/easy_profiler_core/CMakeLists.txt b/src/easy_profiler_core/CMakeLists.txt
 index 1d1b08e..04dd5a1 100644
---- a/src/easy_profiler_core/CMakeLists.txt
-+++ b/src/easy_profiler_core/CMakeLists.txt
+--- a/easy_profiler_core/CMakeLists.txt
++++ b/easy_profiler_core/CMakeLists.txt
 @@ -246,43 +246,10 @@ endif ()
  
  #########################################################################################

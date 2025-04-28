@@ -1,0 +1,28 @@
+diff --git a/src/easy_profiler_core/event_trace_win.cpp b/src/easy_profiler_core/event_trace_win.cpp
+index d827a8e..511b9f2 100644
+--- a/easy_profiler_core/event_trace_win.cpp
++++ b/easy_profiler_core/event_trace_win.cpp
+@@ -343,8 +343,8 @@ EasyEventTracer& EasyEventTracer::instance()
+ }
+ 
+ EasyEventTracer::EasyEventTracer()
++    : m_lowPriority{ EASY_OPTION_LOW_PRIORITY_EVENT_TRACING }
+ {
+-    m_lowPriority = ATOMIC_VAR_INIT(EASY_OPTION_LOW_PRIORITY_EVENT_TRACING);
+     THREAD_PROCESS_INFO_TABLE[0U] = nullptr;
+ }
+ 
+diff --git a/src/easy_profiler_core/thread_storage.cpp b/src/easy_profiler_core/thread_storage.cpp
+index 7091362..2abb8cf 100644
+--- a/easy_profiler_core/thread_storage.cpp
++++ b/easy_profiler_core/thread_storage.cpp
+@@ -64,8 +64,8 @@ ThreadStorage::ThreadStorage()
+     , named(false)
+     , guarded(false)
+     , frameOpened(false)
++    , expired(0)
+ {
+-    expired = ATOMIC_VAR_INIT(0);
+ }
+ 
+ void ThreadStorage::storeValue(profiler::timestamp_t _timestamp, profiler::block_id_t _id, profiler::DataType _type, const void* _data, uint16_t _size, bool _isArray, profiler::ValueId _vin)
